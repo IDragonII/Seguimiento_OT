@@ -436,7 +436,7 @@ Después de crear las tablas, registra los tipos de OT. Por ejemplo
 sql
 INSERT INTO tipos_ot (nombre, descripcion) VALUES
 ('Instalación nueva', 'Instalación de un servicio nuevo'),
-('Reconexiones', 'Reconexión de un servicio existente'),
+('Reubicación', 'Cambio de ubicación de un servicio'),
 ('Otros', 'Otros trabajos no clasificados');
 Los tiempos máximos los configurarás desde el panel administrativo. Por ejemplo, cuando decidas los plazos reales
 

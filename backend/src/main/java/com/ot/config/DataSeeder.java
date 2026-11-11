@@ -73,9 +73,10 @@ public class DataSeeder implements ApplicationRunner {
         }
 
         renombrarTipoSiFalta("INSTALACION", "Instalación nueva", "Instalación de un servicio nuevo");
-        renombrarTipoSiFalta("REPARACION", "Reconexiones", "Reconexión de un servicio existente");
+        renombrarTipoSiFalta("REPARACION", "Reubicación", "Cambio de ubicación de un servicio");
+        renombrarTipoSiFalta("Reconexiones", "Reubicación", "Cambio de ubicación de un servicio");
         crearTipoSiFalta("Instalación nueva", "Instalación de un servicio nuevo");
-        crearTipoSiFalta("Reconexiones", "Reconexión de un servicio existente");
+        crearTipoSiFalta("Reubicación", "Cambio de ubicación de un servicio");
         crearTipoSiFalta("Otros", "Otros trabajos no clasificados");
         log.info("Tipos OT asegurados");
 

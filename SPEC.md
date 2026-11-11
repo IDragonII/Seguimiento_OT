@@ -413,7 +413,7 @@ Ejemplo:
 | ID | Tipo | Número |
 |---|---|---|
 | 1 | Instalación nueva | 001 |
-| 2 | Reconexiones | 001 |
+| 2 | Reubicación | 001 |
 | 3 | Instalación nueva | 002 |
 
 Se permite repetir el número entre diferentes tipos.
@@ -468,7 +468,7 @@ Ejemplo:
 | OT | Tipo |
 |---|---|
 | 001 | Instalación nueva |
-| 002 | Reconexiones |
+| 002 | Reubicación |
 | 003 | Instalación nueva |
 
 Tablas:
@@ -494,7 +494,7 @@ Fecha: 03/11/2026
 Técnico: Juan
 
 OT 001 - Instalación nueva
-OT 002 - Reconexiones
+OT 002 - Reubicación
 OT 003 - Instalación nueva
 ```
 
