@@ -1,0 +1,6 @@
+/* Tailwind v4 sin Preflight: solo theme + utilities.
+   El reset global se omite a propósito para no alterar el CSS
+   existente (panel.css, index.css, app admin). */
+@layer theme, base, components, utilities;
+@import 'tailwindcss/theme.css' layer(theme);
+@import 'tailwindcss/utilities.css' layer(utilities);
