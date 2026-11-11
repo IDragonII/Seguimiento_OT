@@ -58,7 +58,7 @@ Requiere Java 21+ y una instancia de PostgreSQL con los datos de
 |-----------------|------------------------------------------------------------------|
 | **Roles**       | `ADMIN`, `FACTIBILIZADOR`, `TECNICO`, `CONSULTOR`                |
 | **Estados OT**  | `PROGRAMADO`, `ENTREGADO`, `DEVUELTO`, `CERRADO`                 |
-| **Tipos OT**    | `INSTALACION`, `REPARACION`                                      |
+| **Tipos OT**    | `Instalación nueva`, `Reconexiones`, `Otros`                      |
 | **Config tiempos** | `ENTREGADO` = 3 días hábiles                                  |
 | **Usuario admin** | `admin@ot.local` / `Admin123*`                                 |
 
@@ -371,7 +371,7 @@ historial junto a la observación.
 
 | Método | Ruta          | Auth | Descripción |
 |--------|---------------|:----:|-------------|
-| GET    | `/tipos-ot`   | Auth | Lista los tipos de OT (`INSTALACION`, `REPARACION`) |
+| GET    | `/tipos-ot`   | Auth | Lista los tipos de OT (`Instalación nueva`, `Reconexiones`, `Otros`) |
 | GET    | `/estados`    | Auth | Lista los estados de la OT (`PROGRAMADO`, `ENTREGADO`, `DEVUELTO`, `CERRADO`) |
 
 ---

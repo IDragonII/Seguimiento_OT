@@ -412,9 +412,9 @@ Ejemplo:
 
 | ID | Tipo | Número |
 |---|---|---|
-| 1 | INSTALACION | 001 |
-| 2 | REPARACION | 001 |
-| 3 | INSTALACION | 002 |
+| 1 | Instalación nueva | 001 |
+| 2 | Reconexiones | 001 |
+| 3 | Instalación nueva | 002 |
 
 Se permite repetir el número entre diferentes tipos.
 
@@ -467,9 +467,9 @@ Ejemplo:
 
 | OT | Tipo |
 |---|---|
-| 001 | INSTALACION |
-| 002 | REPARACION |
-| 003 | INSTALACION |
+| 001 | Instalación nueva |
+| 002 | Reconexiones |
+| 003 | Instalación nueva |
 
 Tablas:
 
@@ -493,9 +493,9 @@ Entrega #1
 Fecha: 03/11/2026
 Técnico: Juan
 
-OT 001 - INSTALACION
-OT 002 - REPARACION
-OT 003 - INSTALACION
+OT 001 - Instalación nueva
+OT 002 - Reconexiones
+OT 003 - Instalación nueva
 ```
 
 Cada OT tendrá su propio registro individual de entrega.

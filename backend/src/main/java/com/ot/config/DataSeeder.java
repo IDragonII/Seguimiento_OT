@@ -72,18 +72,12 @@ public class DataSeeder implements ApplicationRunner {
             log.info("Estados OT iniciales creados");
         }
 
-        if (tipoOTRepository.count() == 0) {
-            List.of(
-                Map.entry("INSTALACION", "Orden de instalación"),
-                Map.entry("REPARACION", "Orden de reparación")
-            ).forEach(e -> {
-                TipoOT tipo = new TipoOT();
-                tipo.setNombre(e.getKey());
-                tipo.setDescripcion(e.getValue());
-                tipoOTRepository.save(tipo);
-            });
-            log.info("Tipos de OT iniciales creados");
-        }
+        renombrarTipoSiFalta("INSTALACION", "Instalación nueva", "Instalación de un servicio nuevo");
+        renombrarTipoSiFalta("REPARACION", "Reconexiones", "Reconexión de un servicio existente");
+        crearTipoSiFalta("Instalación nueva", "Instalación de un servicio nuevo");
+        crearTipoSiFalta("Reconexiones", "Reconexión de un servicio existente");
+        crearTipoSiFalta("Otros", "Otros trabajos no clasificados");
+        log.info("Tipos OT asegurados");
 
         if (configuracionTiemposOTRepository.count() == 0) {
             estadoOTRepository.findByNombre("ENTREGADO").ifPresent(estado -> {
@@ -107,6 +101,27 @@ public class DataSeeder implements ApplicationRunner {
             admin.setActivo(true);
             usuarioRepository.save(admin);
             log.info("Usuario administrador inicial creado (admin@ot.local)");
+        }
+    }
+
+    private void renombrarTipoSiFalta(String nombreViejo, String nombreNuevo, String descripcion) {
+        if (tipoOTRepository.findByNombre(nombreNuevo).isEmpty()) {
+            tipoOTRepository.findByNombre(nombreViejo).ifPresent(tipo -> {
+                tipo.setNombre(nombreNuevo);
+                tipo.setDescripcion(descripcion);
+                tipoOTRepository.save(tipo);
+                log.info("Tipo OT '{}' renombrado a '{}'", nombreViejo, nombreNuevo);
+            });
+        }
+    }
+
+    private void crearTipoSiFalta(String nombre, String descripcion) {
+        if (tipoOTRepository.findByNombre(nombre).isEmpty()) {
+            TipoOT tipo = new TipoOT();
+            tipo.setNombre(nombre);
+            tipo.setDescripcion(descripcion);
+            tipoOTRepository.save(tipo);
+            log.info("Tipo OT '{}' creado", nombre);
         }
     }
 }
