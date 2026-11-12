@@ -606,6 +606,12 @@ Las alertas se enviarán al administrador y al responsable correspondiente.
 
 La autenticación utilizará JWT.
 
+**Primer ingreso del administrador**: la contraseña de semilla del admin
+(`Admin123*`) no permanece válida — hasta que el administrador cambie nombre,
+email y contraseña, el sistema exige el cambio (modal forzado en el frontend
+y bloqueo `403 CAMBIO_CREDENCIALES_REQUERIDO` en toda la API). La detección
+es por comparación con la contraseña de semilla, sin columna nueva.
+
 La API será responsable de:
 
 - Validar identidad.
@@ -739,6 +745,7 @@ POST /api/auth/login
 POST /api/auth/refresh
 POST /api/auth/logout
 GET  /api/auth/me
+PUT  /api/auth/cambio-inicial
 ```
 
 ### Usuarios

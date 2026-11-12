@@ -38,6 +38,23 @@
 ## Credenciales de prueba
 
 - Admin (app admin): `admin@ot.local` / `Admin123*`
+  - **Primer ingreso obligatorio**: `Admin123*` es la contraseña de semilla
+    (hardcodeada en `com.ot.config.CredencialesSemilla`). Al primer login el
+    sistema **exige cambiar nombre, email y contraseña**: modal forzado
+    (`frontent/src/components/CambioCredencialesModal.jsx`, sin ×/ESC/cierre
+    por overlay — prop `forzado` de `Modal.jsx`) y `403` con
+    `codigo: CAMBIO_CREDENCIALES_REQUERIDO` en toda la API hasta completar el
+    cambio (`PUT /api/auth/cambio-inicial`, interceptor
+    `CambioCredencialesInterceptor`). La detección es "la contraseña sigue
+    siendo la semilla" (`passwordEncoder.matches`) — sin columna nueva, vale
+    para todas las DBs.
+  - El E2E prueba el flujo completo en **cada** corrida y **restaura
+    `Admin123*` al terminar** (vía `PUT /api/usuarios/{id}`) para que siempre
+    arranque en primer ingreso; el password que usa durante la corrida es
+    `Admin123*E2E`. Si cambias la contraseña a mano y el E2E no puede
+    autenticar al admin, restaura la semilla con:
+    `UPDATE usuarios SET password_hash = '$2a$10$cYaQFTa/d2ex1/h.yipICeW.mRfQZmGns7ho0ZMn7eYT//PVdEDnq' WHERE email = 'admin@ot.local';`
+    (hash bcrypt de `Admin123*`).
 - Técnico (panel): `tecnico@ot.local` / `Tecnico123*`
 - Técnico (panel): `maria@ot.local` / `Tecnico123*`
 - Factibilidad (panel): `factibilidad@ot.local` / `Factibilidad123*`

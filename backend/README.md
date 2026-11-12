@@ -60,9 +60,10 @@ Requiere Java 21+ y una instancia de PostgreSQL con los datos de
 | **Estados OT**  | `PROGRAMADO`, `ENTREGADO`, `DEVUELTO`, `CERRADO`                 |
 | **Tipos OT**    | `Instalación nueva`, `Reubicación`, `Otros`                       |
 | **Config tiempos** | `ENTREGADO` = 3 días hábiles                                  |
-| **Usuario admin** | `admin@ot.local` / `Admin123*`                                 |
+| **Usuario admin** | `admin@ot.local` / `Admin123*` (semilla — ver "Primer ingreso")    |
 
-> Cambiar la contraseña del admin y el `JWT_SECRET` antes de producción.
+> La contraseña del admin es de semilla: **el primer login exige cambiarla**
+> (§3). Cambiar también el `JWT_SECRET` antes de producción.
 
 ---
 
@@ -92,9 +93,13 @@ Content-Type: application/json
     "email": "admin@ot.local",
     "rol": "ADMIN"
   },
-  "modulos": []
+  "modulos": [],
+  "debeCambiarCredenciales": false
 }
 ```
+
+`debeCambiarCredenciales` es `true` mientras la contraseña siga siendo la
+semilla (`Admin123*`) — ver **Primer ingreso** más abajo.
 
 El campo `modulos` lista las claves de los módulos del **Panel de trabajo**
 permitidas para el rol (`GET /api/auth/me` lo devuelve igual):
@@ -117,6 +122,37 @@ Authorization: Bearer <token>
 ```
 
 El token expira en **24 horas**. Sin token o con token inválido → `401`.
+
+### Primer ingreso — cambio forzado de credenciales
+
+Mientras la contraseña del admin siga siendo la semilla (`Admin123*`):
+
+- `POST /login` y `GET /me` responden `"debeCambiarCredenciales": true`.
+- **Toda** la API `/api/**` responde `403` (excepto `/api/auth/**` y
+  `/error`):
+
+```json
+{ "codigo": "CAMBIO_CREDENCIALES_REQUERIDO", "mensaje": "Debes cambiar tu nombre, email y contraseña para continuar" }
+```
+
+- El frontend abre un modal forzado (sin ×, sin ESC, sin cierre por overlay)
+  que al completarse llama a:
+
+```http
+PUT /api/auth/cambio-inicial
+Authorization: Bearer <token>
+Content-Type: application/json
+
+{ "nombres": "Nombre", "apellidos": "Apellido", "email": "admin@ot.local", "nuevaPassword": "NuevaClave1" }
+```
+
+Validaciones (`400`): nombres/apellidos obligatorios, email con formato válido
+y sin duplicar, contraseña de ≥8 caracteres con mayúscula y número y distinta
+de la actual. El email puede conservarse; si cambia, el token anterior queda
+inválido (el subject JWT es el email) y la respuesta incluye uno **nuevo** con
+la misma forma que el login y `debeCambiarCredenciales: false`. Después de
+cambiar, la API queda desbloqueada (la detección es por comparación con la
+contraseña de semilla, sin columna nueva).
 
 ---
 
@@ -188,6 +224,7 @@ historial junto a la observación.
 |--------|-------------|:----:|--------------------------------------|
 | POST   | `/login`    |  —   | Devuelve JWT + datos del usuario     |
 | GET    | `/me`       | Auth | Perfil del usuario autenticado       |
+| PUT    | `/cambio-inicial` | Auth | Primer ingreso: cambia nombre, email y contraseña (ver §3) |
 
 ### 6.2 Órdenes de trabajo — `/api/ordenes-trabajo`
 

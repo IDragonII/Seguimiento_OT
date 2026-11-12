@@ -28,6 +28,14 @@ async function request(path, { method = 'GET', body } = {}) {
 
   const data = res.status === 204 ? null : await res.json().catch(() => null)
 
+  if (res.status === 403 && data?.codigo === 'CAMBIO_CREDENCIALES_REQUERIDO') {
+    localStorage.setItem('cambioPendiente', '1')
+    if (!window.location.pathname.startsWith('/login')) {
+      window.location.href = '/login'
+    }
+    throw new Error(data.mensaje || 'Debes cambiar tu contraseña para continuar')
+  }
+
   if (!res.ok) {
     const error = new Error(data?.mensaje || `Error ${res.status}`)
     error.status = res.status

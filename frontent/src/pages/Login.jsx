@@ -1,15 +1,22 @@
 import { useState } from 'react'
 import { Navigate, useNavigate } from 'react-router-dom'
 import { api } from '../api/api'
+import CambioCredencialesModal from '../components/CambioCredencialesModal'
 
 export default function Login() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
   const [cargando, setCargando] = useState(false)
+  const [cambioPendiente, setCambioPendiente] = useState(
+    () => localStorage.getItem('cambioPendiente') === '1'
+  )
   const navigate = useNavigate()
 
   if (localStorage.getItem('token')) {
+    if (cambioPendiente) {
+      return <CambioCredencialesModal forzado />
+    }
     const guardado = api.getUsuario()
     return <Navigate to={guardado?.rol === 'ADMIN' ? '/' : '/panel'} replace />
   }
@@ -19,7 +26,13 @@ export default function Login() {
     setError('')
     setCargando(true)
     try {
-      await api.login(email, password)
+      const data = await api.login(email, password)
+      if (data.debeCambiarCredenciales) {
+        localStorage.setItem('cambioPendiente', '1')
+        setCambioPendiente(true)
+        return
+      }
+      localStorage.removeItem('cambioPendiente')
       const usuario = api.getUsuario()
       navigate(usuario?.rol === 'ADMIN' ? '/' : '/panel', { replace: true })
     } catch (err) {

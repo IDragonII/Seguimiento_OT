@@ -90,18 +90,18 @@ public class DataSeeder implements ApplicationRunner {
             log.info("Configuración de tiempos OT inicial creada");
         }
 
-        if (usuarioRepository.findByEmail("admin@ot.local").isEmpty()) {
+        if (usuarioRepository.findByEmail(CredencialesSemilla.EMAIL_ADMIN).isEmpty()) {
             Rol adminRol = rolRepository.findByNombre("ADMIN").orElseThrow();
 
             Usuario admin = new Usuario();
             admin.setRol(adminRol);
             admin.setNombres("Administrador");
             admin.setApellidos("Sistema");
-            admin.setEmail("admin@ot.local");
-            admin.setPasswordHash(passwordEncoder.encode("Admin123*"));
+            admin.setEmail(CredencialesSemilla.EMAIL_ADMIN);
+            admin.setPasswordHash(passwordEncoder.encode(CredencialesSemilla.PASSWORD_ADMIN));
             admin.setActivo(true);
             usuarioRepository.save(admin);
-            log.info("Usuario administrador inicial creado (admin@ot.local)");
+            log.info("Usuario administrador inicial creado ({})", CredencialesSemilla.EMAIL_ADMIN);
         }
     }
 

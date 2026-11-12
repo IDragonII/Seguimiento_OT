@@ -369,6 +369,19 @@ tr:hover td {
   margin-bottom: 14px;
 }
 
+.cambio-inicial-aviso {
+  color: var(--muted);
+  font-size: 14px;
+  margin-bottom: 16px;
+  line-height: 1.5;
+}
+
+.cambio-inicial-requisitos {
+  color: var(--muted);
+  font-size: 12.5px;
+  margin-top: -4px;
+}
+
 .vacio {
   color: var(--muted);
   text-align: center;
