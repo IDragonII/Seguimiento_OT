@@ -2,7 +2,6 @@ import {
   BarChart3,
   BellRing,
   Briefcase,
-  CalendarDays,
   ClipboardCheck,
   Files,
   History,
@@ -43,15 +42,9 @@ export const MODULOS = [
     icono: Files,
   },
   {
-    key: 'programaciones',
-    nombre: 'Programaciones',
-    descripcion: 'Planificación de entregas',
-    icono: CalendarDays,
-  },
-  {
     key: 'entregas',
     nombre: 'Entregas',
-    descripcion: 'Entrega de OT a técnicos',
+    descripcion: 'Programación, entregas y recepción de OT',
     icono: Truck,
   },
   {

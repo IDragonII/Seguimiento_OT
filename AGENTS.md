@@ -34,6 +34,14 @@
 - En `frontent/src/index.css` el reset `* { margin:0; padding:0 }` **debe
   quedar dentro de `@layer base`**: fuera de capa vence a las utilities de
   Tailwind (`@layer utilities`) y anula todo su padding.
+- Si un componente nuevo no aplica sus utilities (layout roto), **reiniciar
+  `npm run dev`**: el dev server de larga vida no rescaneó las clases de
+  archivos creados después de arrancar (se detectó con `sm:grid` ausente en
+  `EntregasPanel.tsx`).
+- En Tailwind los valores arbitrarios de `grid-cols` van con **guiones
+  bajos**, nunca comas: `grid-cols-[80px_1fr]` (con comas genera
+  `grid-template-columns: 80px,1fr`, CSS inválido que se descarta y todo se
+  apila en 1 columna).
 
 ## Credenciales de prueba
 
@@ -66,9 +74,10 @@
   TECNICO/CONSULTOR/FACTIBILIZADOR → `/panel`.
 - Los módulos los sirve el backend (`modulos[]` en `POST /api/auth/login` y
   `GET /api/auth/me`); catálogo en `frontent/src/components/panel/modulos.js`.
-- Al presionar un módulo por ahora solo se muestra el anuncio
-  "Presionaste este módulo" (`ModuloProximamente.jsx`); los módulos se
-  construirán después, uno a uno.
+- Al presionar un módulo sin vista propia se muestra el anuncio
+  "Presionaste este módulo" (`ModuloProximamente.jsx`); los módulos restantes
+  se construirán después, uno a uno. Los construidos se mapean en
+  `VISTAS_MODULO` (`App.jsx`).
 - **Módulo `mis-ordenes` ya está construido** (sigue la regla de modales):
   `frontent/src/pages/CentroTrabajo.tsx` — **Centro de trabajo del Técnico**
   (bandeja + indicadores + categorías + expediente en `Modal`), TSX + Tailwind:
@@ -81,9 +90,69 @@
   devolución en `Modal` de formulario (dos modales nunca apilados: el formulario
   reemplaza al expediente). `GET /api/entregas/mis-ot` devuelve además
   `recibidoPor` (Usuario) para clasificar. En `App.jsx` sale de `RUTAS_MODULO`
-  y tiene ruta propia `/panel/mis-ordenes`. `components/panel/CalendarioMes.tsx`
-  y `estadosOT.ts` quedan **sin uso** en este módulo (reservados para
-  Factibilizador); `MisOrdenes.tsx` fue eliminado.
+  y tiene ruta propia `/panel/mis-ordenes`. `MisOrdenes.tsx` fue eliminado
+  (`CalendarioMes.tsx` y `estadosOT.ts` hoy los consume el módulo
+  `entregas`).
+- **Módulos `mis-devoluciones` y `mi-historial` construidos** (solo vista
+  lista + detalle en `Modal`, sin formularios): `frontent/src/pages/
+  MisDevoluciones.tsx` y `frontent/src/pages/MiHistorial.tsx` (TSX + Tailwind,
+  patrón CentroTrabajo). **Mis devoluciones**: filtra `GET /api/entregas/mis-ot`
+  por `fechaDevolucion != null`; indicadores total / pendientes (`recibidoPor`
+  null) / recibidas; toolbar (buscador Nº OT, estado devolución, orden);
+  modal solo lectura con datos de la devolución + timeline de la OT.
+  **Mi historial**: `GET /api/ordenes-trabajo/mis-historial` (endpoint nuevo:
+  movimientos de las OTs donde fui técnico, todos los actores,
+  `ORDER BY fecha DESC` — no confundir con `findByUsuarioIdOrderByFechaDesc`);
+  indicadores movimientos / OTs / últimos 7 días; toolbar (buscador Nº OT,
+  acción, rango de fechas, orden); modal con datos del movimiento + ficha de
+  la OT + timeline. Ambas vistas en `App.jsx` vía `VISTAS_MODULO`.
+- **Módulo `entregas` construido** (FUSIÓN de `programaciones` + entregas;
+  CONSULTOR y FACTIBILIZADOR): `frontent/src/pages/EntregasPanel.tsx`
+  (TSX + Tailwind, en `VISTAS_MODULO`; `Programaciones.tsx` fue **eliminado**
+  y la clave `programaciones` salió de `modulosPorRol` — CONSULTOR queda en
+  **6** tarjetas y FACTIBILIZADOR en **8**). Dos vistas con toggle
+  `data-vista` (Calendario | Entregas) en el toolbar: **Calendario** usa
+  `components/panel/CalendarioMes.tsx` (chips OT → detalle de programación
+  con pills por estado real + acciones Agregar OTs / Entregar / Reprogramar)
+  y **Entregas** tiene subvistas lista/fichas (`data-subvista`), buscador,
+  orden y contador. 3 indicadores `data-indicador` = ENTREGAS /
+  PROGRAMADAS ("Pend. entregar" = OTs en estado `PROGRAMADO`) / PENDIENTES
+  ("Sin recepción"). Siete modales locales con estado único `ModalState`
+  (**nunca apilados**): DetalleProgramacion, NuevaProgramacion
+  (`POST /api/programaciones`), Agregar (checklist
+  `GET /api/ordenes-trabajo/disponibles` → `POST /{id}/ordenes`),
+  Reprogramar (copia OTs pendientes a fecha nueva), NuevaEntrega (modo
+  standalone con checklist de `disponibles` y modo "pre" desde el detalle de
+  programación que precarga OTs `PROGRAMADO`; técnico general + individual
+  por fila → `POST /api/entregas` → `{entrega.id}`), DetalleEntrega
+  (`GET /api/entregas/{id}` → `{entrega, detalles}`) y Recepción (checkbox
+  por OT recibible + ubicación → `POST /{id}/recepcion`). CONSULTOR 100%
+  solo lectura (acciones gateadas por `puedeEditable`; el badge informativo
+  "sin recepción" sí se muestra; verificado en E2E caso [3]). **Backend**:
+  `@PreAuthorize("hasAnyRole('ADMIN','FACTIBILIZADOR')")` en `POST
+  /api/entregas`, `POST /{id}/recepcion` y
+  `POST /detalle/{id}/confirmar-recepcion` (`solicitar-devolucion` sigue sin
+  restricción: valida identidad). El flag `entregada` de `detallesDe()` es
+  siempre `false` (backend `setProgramacionDetalle(null)`); el frontend
+  calcula pendientes por **estado de la OT**. API `/api/programaciones`
+  intacta (alimenta calendario y seeds del E2E). E2E: casos [3] y [4] cubren
+  el módulo; capturas con `fotos-entregas.cjs` (9 PNG).
+- **Módulo `ordenes-trabajo` construido** (CONSULTOR + FACTIBILIZADOR,
+  "Completo"): `frontent/src/pages/OrdenesTrabajoPanel.tsx` (TSX + Tailwind,
+  en `VISTAS_MODULO`; nombre evita el choque con la página admin
+  `OrdenesTrabajo.jsx`, intacta). Vista lista + vista fichas (toggle
+  `data-vista`, patrón CentroTrabajo), 3 indicadores (total / programadas /
+  entregadas), toolbar (buscador Nº/tipo/descripción, filtros tipo y estado,
+  orden reciente/antigua/Nº, contador). Dos modales locales, **nunca
+  apilados**: Detalle (banda tipo+estado, datos incl. **ubicación** SPEC §5.2,
+  timeline `GET /{id}/historial`) y **Nueva OT** (`POST`, número manual único
+  por tipo) — esta última **solo FACTIBILIZADOR** (`data-nueva-ot`); el
+  CONSULTOR es 100% solo lectura (verificado en E2E). **Backend**:
+  `@PreAuthorize("hasAnyRole('ADMIN','FACTIBILIZADOR')")` en `POST
+  /api/ordenes-trabajo` (antes cualquier rol autenticado podía crear OT).
+  E2E: casos [3] y [4] extienden el módulo; el caso [5] (móvil) clickea
+  la tarjeta `devoluciones` (nth(2), placeholder) y verifica 8 círculos en
+  el radial.
 - **No son módulos**: notificaciones y perfil. La **campanita** del header
   abre un dropdown con las alertas (detalle en `Modal`); el **avatar** abre
   un menú con "Mi perfil" (Modal con tarjeta de datos) y "Cerrar sesión"

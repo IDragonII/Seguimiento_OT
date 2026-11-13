@@ -50,6 +50,7 @@ public class OrdenTrabajoController {
     }
 
     @PostMapping
+    @PreAuthorize("hasAnyRole('ADMIN','FACTIBILIZADOR')")
     public ResponseEntity<?> create(@RequestBody OrdenTrabajoRequest request, Authentication auth) {
         if (ordenRepository.existsByTipoOT_IdAndNumeroOT(request.getTipoOTId(), request.getNumeroOT())) {
             Map<String, String> error = new HashMap<>();
@@ -85,6 +86,12 @@ public class OrdenTrabajoController {
     @GetMapping("/{id}/historial")
     public ResponseEntity<List<HistorialOT>> getHistorial(@PathVariable Long id) {
         return ResponseEntity.ok(historialRepository.findByOrdenTrabajoIdOrderByFechaDesc(id));
+    }
+
+    @GetMapping("/mis-historial")
+    public ResponseEntity<List<HistorialOT>> getMisHistorial(Authentication auth) {
+        Usuario usuario = usuarioRepository.findByEmail(auth.getName()).orElseThrow();
+        return ResponseEntity.ok(historialRepository.findByOrdenesDeTecnico(usuario.getId()));
     }
 
     public static class OrdenTrabajoRequest {

@@ -11,6 +11,10 @@ import PanelLayout from './layouts/PanelLayout'
 import ModuloLayout from './layouts/ModuloLayout'
 import Panel from './pages/Panel'
 import CentroTrabajo from './pages/CentroTrabajo'
+import MisDevoluciones from './pages/MisDevoluciones'
+import MiHistorial from './pages/MiHistorial'
+import OrdenesTrabajoPanel from './pages/OrdenesTrabajoPanel'
+import EntregasPanel from './pages/EntregasPanel'
 import ModuloProximamente from './components/panel/ModuloProximamente'
 
 const ROLES_POR_RUTA = {
@@ -28,7 +32,6 @@ const RUTAS_MODULO = [
   'mis-devoluciones',
   'mi-historial',
   'ordenes-trabajo',
-  'programaciones',
   'entregas',
   'devoluciones',
   'seguimiento',
@@ -37,6 +40,14 @@ const RUTAS_MODULO = [
   'revision',
   'alertas',
 ]
+
+// Vistas construidas del Panel; el resto sigue como anuncio "próximamente".
+const VISTAS_MODULO = {
+  'mis-devoluciones': MisDevoluciones,
+  'mi-historial': MiHistorial,
+  'ordenes-trabajo': OrdenesTrabajoPanel,
+  entregas: EntregasPanel,
+}
 
 function RequireAuth({ roles, children }) {
   const raw = localStorage.getItem('usuario')
@@ -145,13 +156,16 @@ function App() {
           }
         >
           <Route path="/panel/mis-ordenes" element={<CentroTrabajo />} />
-          {RUTAS_MODULO.map((key) => (
-            <Route
-              key={key}
-              path={`/panel/${key}`}
-              element={<ModuloProximamente />}
-            />
-          ))}
+          {RUTAS_MODULO.map((key) => {
+            const Vista = VISTAS_MODULO[key]
+            return (
+              <Route
+                key={key}
+                path={`/panel/${key}`}
+                element={Vista ? <Vista /> : <ModuloProximamente />}
+              />
+            )
+          })}
         </Route>
 
         <Route path="*" element={<Navigate to="/" replace />} />

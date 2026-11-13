@@ -108,7 +108,7 @@ permitidas para el rol (`GET /api/auth/me` lo devuelve igual):
 |-----|---------|
 | ADMIN | `[]` (usa la app `/`, no el panel) |
 | TECNICO | `mis-ordenes`, `mis-devoluciones`, `mi-historial` |
-| CONSULTOR | `ordenes-trabajo`, `programaciones`, `entregas`, `devoluciones`, `seguimiento`, `historial`, `reportes` |
+| CONSULTOR | `ordenes-trabajo`, `entregas`, `devoluciones`, `seguimiento`, `historial`, `reportes` |
 | FACTIBILIZADOR | los de CONSULTOR + `revision`, `alertas` |
 
 **401** — credenciales inválidas: `{ "mensaje": "Credenciales inválidas" }`

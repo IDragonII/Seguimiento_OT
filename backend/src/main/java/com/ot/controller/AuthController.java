@@ -175,10 +175,10 @@ public class AuthController {
             case "TECNICO" -> List.of(
                 "mis-ordenes", "mis-devoluciones", "mi-historial");
             case "CONSULTOR" -> List.of(
-                "ordenes-trabajo", "programaciones", "entregas", "devoluciones",
+                "ordenes-trabajo", "entregas", "devoluciones",
                 "seguimiento", "historial", "reportes");
             case "FACTIBILIZADOR" -> List.of(
-                "ordenes-trabajo", "programaciones", "entregas", "devoluciones",
+                "ordenes-trabajo", "entregas", "devoluciones",
                 "revision", "seguimiento", "historial", "alertas", "reportes");
             default -> List.of();
         };

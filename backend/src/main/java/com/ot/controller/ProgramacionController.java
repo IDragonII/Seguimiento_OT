@@ -34,8 +34,22 @@ public class ProgramacionController {
     }
 
     @GetMapping
-    public ResponseEntity<List<Programacion>> getAll() {
-        return ResponseEntity.ok(programacionRepository.findAllByOrderByFechaProgramacionDesc());
+    public ResponseEntity<List<Map<String, Object>>> getAll() {
+        List<Map<String, Object>> resultado = programacionRepository
+            .findAllByOrderByFechaProgramacionDesc()
+            .stream()
+            .map(p -> {
+                Map<String, Object> item = new HashMap<>();
+                item.put("id", p.getId());
+                item.put("fechaProgramacion", p.getFechaProgramacion());
+                item.put("programadoPor", p.getProgramadoPor());
+                item.put("observacion", p.getObservacion());
+                item.put("fechaCreacion", p.getFechaCreacion());
+                item.put("detalles", detallesDe(p.getId()));
+                return item;
+            })
+            .toList();
+        return ResponseEntity.ok(resultado);
     }
 
     @GetMapping("/{id}")
@@ -44,21 +58,24 @@ public class ProgramacionController {
             .map(p -> {
                 Map<String, Object> response = new HashMap<>();
                 response.put("programacion", p);
-                List<Map<String, Object>> detalles = detalleRepository.findByProgramacionId(id).stream()
-                    .map(d -> {
-                        Map<String, Object> item = new HashMap<>();
-                        item.put("id", d.getId());
-                        item.put("ordenTrabajo", d.getOrdenTrabajo());
-                        item.put("observacion", d.getObservacion());
-                        item.put("fechaCreacion", d.getFechaCreacion());
-                        item.put("entregada", entregaDetalleRepository.existsByProgramacionDetalleId(d.getId()));
-                        return item;
-                    })
-                    .toList();
-                response.put("detalles", detalles);
+                response.put("detalles", detallesDe(id));
                 return ResponseEntity.ok(response);
             })
             .orElse(ResponseEntity.notFound().build());
+    }
+
+    private List<Map<String, Object>> detallesDe(Long programacionId) {
+        return detalleRepository.findByProgramacionId(programacionId).stream()
+            .map(d -> {
+                Map<String, Object> item = new HashMap<>();
+                item.put("id", d.getId());
+                item.put("ordenTrabajo", d.getOrdenTrabajo());
+                item.put("observacion", d.getObservacion());
+                item.put("fechaCreacion", d.getFechaCreacion());
+                item.put("entregada", entregaDetalleRepository.existsByProgramacionDetalleId(d.getId()));
+                return item;
+            })
+            .toList();
     }
 
     @PostMapping

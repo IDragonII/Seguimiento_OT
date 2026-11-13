@@ -3,6 +3,7 @@ package com.ot.controller;
 import com.ot.model.*;
 import com.ot.repository.*;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
@@ -69,6 +70,7 @@ public class EntregaController {
     }
 
     @PostMapping
+    @PreAuthorize("hasAnyRole('ADMIN','FACTIBILIZADOR')")
     public ResponseEntity<?> create(@RequestBody EntregaRequest request, Authentication auth) {
         if (request.getDetalles() == null || request.getDetalles().isEmpty()) {
             return ResponseEntity.badRequest().body(Map.of("mensaje", "Debe asignar al menos una OT a un técnico"));
@@ -250,6 +252,7 @@ public class EntregaController {
     }
 
     @PostMapping("/detalle/{id}/confirmar-recepcion")
+    @PreAuthorize("hasAnyRole('ADMIN','FACTIBILIZADOR')")
     public ResponseEntity<?> confirmarRecepcion(@PathVariable Long id, @RequestBody DevolucionRequest request, Authentication auth) {
         EntregaDetalle detalle = detalleRepository.findById(id).orElseThrow();
         Usuario usuario = usuarioRepository.findByEmail(auth.getName()).orElseThrow();
@@ -291,6 +294,7 @@ public class EntregaController {
     }
 
     @PostMapping("/{entregaId}/recepcion")
+    @PreAuthorize("hasAnyRole('ADMIN','FACTIBILIZADOR')")
     @Transactional
     public ResponseEntity<?> recepcion(@PathVariable Long entregaId, @RequestBody RecepcionRequest request, Authentication auth) {
         Entrega entrega = entregaRepository.findById(entregaId).orElseThrow();
