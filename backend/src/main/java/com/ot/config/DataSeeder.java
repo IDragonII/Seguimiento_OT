@@ -159,8 +159,18 @@ public class DataSeeder implements ApplicationRunner {
             "DELETE FROM alertas_destinatarios WHERE usuario_id <> ?", adminId);
         int borrados = jdbcTemplate.update(
             "DELETE FROM usuarios WHERE email <> ?", CredencialesSemilla.EMAIL_ADMIN);
+
+        // Restaura el admin a credenciales semilla para que el "reinicio"
+        // deje un acceso conocido: Admin123* + modal de primer ingreso.
+        jdbcTemplate.update(
+            "UPDATE usuarios SET nombres = ?, apellidos = ?, password_hash = ?, "
+                + "activo = true, debe_cambiar_credenciales = true WHERE email = ?",
+            "Administrador", "Sistema",
+            passwordEncoder.encode(CredencialesSemilla.PASSWORD_ADMIN),
+            CredencialesSemilla.EMAIL_ADMIN);
+
         log.warn(
-            "RESET usuarios (provisional): eliminados {}, FKs reasignadas a admin {}, destinatarios de alertas borrados {}",
+            "RESET usuarios (provisional): eliminados {}, FKs reasignadas a admin {}, destinatarios de alertas borrados {}, admin restaurado a semilla",
             borrados, fk, destinatarios);
     }
 
