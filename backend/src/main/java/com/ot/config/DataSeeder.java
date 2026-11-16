@@ -4,8 +4,10 @@ import com.ot.model.*;
 import com.ot.repository.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.ApplicationArguments;
 import org.springframework.boot.ApplicationRunner;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
@@ -24,24 +26,35 @@ public class DataSeeder implements ApplicationRunner {
     private final TipoOTRepository tipoOTRepository;
     private final ConfiguracionTiemposOTRepository configuracionTiemposOTRepository;
     private final PasswordEncoder passwordEncoder;
+    private final JdbcTemplate jdbcTemplate;
+
+    @Value("${RESET_DB:false}")
+    private boolean resetDb;
+
+    @Value("${spring.datasource.url:}")
+    private String datasourceUrl;
 
     public DataSeeder(RolRepository rolRepository,
                       UsuarioRepository usuarioRepository,
                       EstadoOTRepository estadoOTRepository,
                       TipoOTRepository tipoOTRepository,
                       ConfiguracionTiemposOTRepository configuracionTiemposOTRepository,
-                      PasswordEncoder passwordEncoder) {
+                      PasswordEncoder passwordEncoder,
+                      JdbcTemplate jdbcTemplate) {
         this.rolRepository = rolRepository;
         this.usuarioRepository = usuarioRepository;
         this.estadoOTRepository = estadoOTRepository;
         this.tipoOTRepository = tipoOTRepository;
         this.configuracionTiemposOTRepository = configuracionTiemposOTRepository;
         this.passwordEncoder = passwordEncoder;
+        this.jdbcTemplate = jdbcTemplate;
     }
 
     @Override
     @Transactional
     public void run(ApplicationArguments args) {
+        resetearUsuariosSiCorresponde();
+
         if (rolRepository.count() == 0) {
             Map.of(
                 "ADMIN", "Administrador del sistema",
@@ -103,6 +116,52 @@ public class DataSeeder implements ApplicationRunner {
             usuarioRepository.save(admin);
             log.info("Usuario administrador inicial creado ({})", CredencialesSemilla.EMAIL_ADMIN);
         }
+    }
+
+    /**
+     * RESET TEMPORAL DE USUARIOS (producción): elimina todos los usuarios
+     * excepto admin@ot.local, reasignando sus FKs (OTs, programaciones,
+     * entregas, historial) al admin. Se activa con la env var RESET_DB=true
+     * o automáticamente si el datasource apunta a Render (contiene "render").
+     * En local (localhost/postgres) NUNCA se activa.
+     * ESTE BLOQUE ES PROVISIONAL: eliminarlo en el commit siguiente.
+     */
+    private void resetearUsuariosSiCorresponde() {
+        boolean porEnv = resetDb;
+        boolean porRender = datasourceUrl != null && datasourceUrl.toLowerCase().contains("render");
+        if (!porEnv && !porRender) {
+            return;
+        }
+
+        var adminOpt = usuarioRepository.findByEmail(CredencialesSemilla.EMAIL_ADMIN);
+        if (adminOpt.isEmpty()) {
+            int borrados = jdbcTemplate.update("DELETE FROM usuarios");
+            log.warn("RESET usuarios (provisional): no existía admin; eliminados {}", borrados);
+            return;
+        }
+
+        Long adminId = adminOpt.get().getId();
+        int fk = 0;
+        fk += jdbcTemplate.update(
+            "UPDATE ordenes_trabajo SET registrado_por = ? WHERE registrado_por <> ?", adminId, adminId);
+        fk += jdbcTemplate.update(
+            "UPDATE programaciones SET programado_por = ? WHERE programado_por <> ?", adminId, adminId);
+        fk += jdbcTemplate.update(
+            "UPDATE entregas SET entregado_por = ? WHERE entregado_por <> ?", adminId, adminId);
+        fk += jdbcTemplate.update(
+            "UPDATE entrega_detalle SET tecnico_id = ? WHERE tecnico_id <> ?", adminId, adminId);
+        fk += jdbcTemplate.update(
+            "UPDATE entrega_detalle SET recibido_por = ? WHERE recibido_por IS NOT NULL AND recibido_por <> ?",
+            adminId, adminId);
+        fk += jdbcTemplate.update(
+            "UPDATE historial_ot SET usuario_id = ? WHERE usuario_id <> ?", adminId, adminId);
+        int destinatarios = jdbcTemplate.update(
+            "DELETE FROM alertas_destinatarios WHERE usuario_id <> ?", adminId);
+        int borrados = jdbcTemplate.update(
+            "DELETE FROM usuarios WHERE email <> ?", CredencialesSemilla.EMAIL_ADMIN);
+        log.warn(
+            "RESET usuarios (provisional): eliminados {}, FKs reasignadas a admin {}, destinatarios de alertas borrados {}",
+            borrados, fk, destinatarios);
     }
 
     private void renombrarTipoSiFalta(String nombreViejo, String nombreNuevo, String descripcion) {
