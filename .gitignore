@@ -5,6 +5,9 @@ logs/
 # Backend (Maven)
 backend/target/
 
+# Respaldo local del reset temporal de usuarios (no se sube)
+reset/
+
 # Frontend
 node_modules/
 dist/
