@@ -1,5 +1,6 @@
 package com.ot.controller;
 
+import com.ot.model.Rol;
 import com.ot.model.Usuario;
 import com.ot.repository.UsuarioRepository;
 import com.ot.repository.RolRepository;
@@ -55,14 +56,22 @@ public class UsuarioController {
             return ResponseEntity.badRequest().body(error);
         }
 
-        var rol = rolRepository.findById(request.getRolId()).orElseThrow();
+        var rolOpt = buscarRol(request);
+        if (rolOpt.isEmpty()) {
+            Map<String, String> error = new HashMap<>();
+            error.put("mensaje", request.getRol() != null && !request.getRol().isBlank()
+                ? "Rol desconocido: " + request.getRol()
+                : "Debe indicar el rol");
+            return ResponseEntity.badRequest().body(error);
+        }
 
         Usuario usuario = new Usuario();
         usuario.setNombres(request.getNombres());
         usuario.setApellidos(request.getApellidos());
         usuario.setEmail(request.getEmail());
         usuario.setPasswordHash(passwordEncoder.encode(request.getPassword()));
-        usuario.setRol(rol);
+        usuario.setRol(rolOpt.get());
+        usuario.setDebeCambiarCredenciales(true);
 
         return ResponseEntity.ok(usuarioRepository.save(usuario));
     }
@@ -78,9 +87,17 @@ public class UsuarioController {
 
                 if (request.getPassword() != null && !request.getPassword().isEmpty()) {
                     usuario.setPasswordHash(passwordEncoder.encode(request.getPassword()));
+                    usuario.setDebeCambiarCredenciales(true);
                 }
 
-                if (request.getRolId() != null) {
+                if (request.getRol() != null && !request.getRol().isBlank()) {
+                    var opt = rolRepository.findByNombre(request.getRol().trim().toUpperCase());
+                    if (opt.isEmpty()) {
+                        return ResponseEntity.badRequest()
+                            .body(Map.of("mensaje", "Rol desconocido: " + request.getRol()));
+                    }
+                    usuario.setRol(opt.get());
+                } else if (request.getRolId() != null) {
                     var rol = rolRepository.findById(request.getRolId()).orElseThrow();
                     usuario.setRol(rol);
                 }
@@ -101,11 +118,27 @@ public class UsuarioController {
             .orElse(ResponseEntity.notFound().build());
     }
 
+    /**
+     * Resuelve el rol por nombre (preferido) o por id (compat con la API
+     * antigua). El frontend envía el nombre porque los ids de la tabla
+     * `roles` no son deterministas (DataSeeder usa Map.of).
+     */
+    private java.util.Optional<Rol> buscarRol(UsuarioRequest request) {
+        if (request.getRol() != null && !request.getRol().isBlank()) {
+            return rolRepository.findByNombre(request.getRol().trim().toUpperCase());
+        }
+        if (request.getRolId() != null) {
+            return rolRepository.findById(request.getRolId());
+        }
+        return java.util.Optional.empty();
+    }
+
     public static class UsuarioRequest {
         private String nombres;
         private String apellidos;
         private String email;
         private String password;
+        private String rol;
         private Long rolId;
 
         public String getNombres() { return nombres; }
@@ -116,6 +149,8 @@ public class UsuarioController {
         public void setEmail(String email) { this.email = email; }
         public String getPassword() { return password; }
         public void setPassword(String password) { this.password = password; }
+        public String getRol() { return rol; }
+        public void setRol(String rol) { this.rol = rol; }
         public Long getRolId() { return rolId; }
         public void setRolId(Long rolId) { this.rolId = rolId; }
     }

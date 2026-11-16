@@ -43,6 +43,7 @@ CREATE TABLE usuarios (
     password_hash TEXT NOT NULL,
 
     activo BOOLEAN NOT NULL DEFAULT TRUE,
+    debe_cambiar_credenciales BOOLEAN NOT NULL DEFAULT FALSE,
 
     fecha_creacion TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     fecha_actualizacion TIMESTAMPTZ NOT NULL DEFAULT NOW()

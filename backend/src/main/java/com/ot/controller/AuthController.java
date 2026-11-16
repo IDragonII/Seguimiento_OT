@@ -56,7 +56,7 @@ public class AuthController {
                 "rol", usuario.getRol().getNombre()
             ));
             response.put("modulos", modulosPorRol(usuario.getRol().getNombre()));
-            response.put("debeCambiarCredenciales", credencialesDeSemilla(usuario));
+            response.put("debeCambiarCredenciales", debeCambiarCredenciales(usuario));
 
             return ResponseEntity.ok(response);
         } catch (Exception e) {
@@ -79,7 +79,7 @@ public class AuthController {
         response.put("email", usuario.getEmail());
         response.put("rol", usuario.getRol().getNombre());
         response.put("modulos", modulosPorRol(usuario.getRol().getNombre()));
-        response.put("debeCambiarCredenciales", credencialesDeSemilla(usuario));
+        response.put("debeCambiarCredenciales", debeCambiarCredenciales(usuario));
 
         return ResponseEntity.ok(response);
     }
@@ -93,7 +93,7 @@ public class AuthController {
             return ResponseEntity.status(401).body(error);
         }
 
-        if (!credencialesDeSemilla(usuario)) {
+        if (!debeCambiarCredenciales(usuario)) {
             Map<String, String> error = new HashMap<>();
             error.put("mensaje", "Las credenciales ya fueron cambiadas");
             return ResponseEntity.badRequest().body(error);
@@ -140,6 +140,7 @@ public class AuthController {
         usuario.setApellidos(apellidos);
         usuario.setEmail(email);
         usuario.setPasswordHash(passwordEncoder.encode(nuevaPassword));
+        usuario.setDebeCambiarCredenciales(false);
         usuario.setFechaActualizacion(LocalDateTime.now());
         usuarioRepository.save(usuario);
 
@@ -161,8 +162,14 @@ public class AuthController {
         return ResponseEntity.ok(response);
     }
 
-    private boolean credencialesDeSemilla(Usuario usuario) {
-        return passwordEncoder.matches(CredencialesSemilla.PASSWORD_ADMIN, usuario.getPasswordHash());
+    /**
+     * Cambio forzado en el primer ingreso: el flag de la BD (usuarios creados
+     * desde la UI o con contraseña reseteada por un admin) o la contraseña
+     * sigue siendo la semilla (admin sembrado, retrocompatible sin backfill).
+     */
+    private boolean debeCambiarCredenciales(Usuario usuario) {
+        return Boolean.TRUE.equals(usuario.getDebeCambiarCredenciales())
+            || passwordEncoder.matches(CredencialesSemilla.PASSWORD_ADMIN, usuario.getPasswordHash());
     }
 
     /**

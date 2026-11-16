@@ -42,6 +42,16 @@
   bajos**, nunca comas: `grid-cols-[80px_1fr]` (con comas genera
   `grid-template-columns: 80px,1fr`, CSS inválido que se descarta y todo se
   apila en 1 columna).
+- **Roles de usuarios: enviar siempre el NOMBRE, nunca el id** (el frontend
+  manda `rol: "FACTIBILIZADOR"`; el backend resuelve con `findByNombre`).
+  Los ids de la tabla `roles` **no son deterministas**: `DataSeeder` los crea
+  con `Map.of(...)` cuyo orden de iteración no está garantizado (en la BD viva
+  quedó `1=CONSULTOR, 2=TECNICO, 3=FACTIBILIZADOR, 4=ADMIN`, ≠ `db.sql`).
+  Hardcodear ids en el frontend asigna roles cruzados en silencio.
+- **Primer ingreso forzado** (`debeCambiarCredenciales`): flag real
+  `usuarios.debe_cambiar_credenciales` (true al crear el usuario o al
+  resetearle la contraseña) **o** hash == semilla `Admin123*` (retrocompat).
+  Se limpia en `PUT /api/auth/cambio-inicial`. No existe registro público.
 
 ## Credenciales de prueba
 

@@ -46,6 +46,9 @@ public class Usuario implements UserDetails {
     @Column(name = "activo", nullable = false, columnDefinition = "BOOLEAN DEFAULT TRUE")
     private Boolean activo = true;
 
+    @Column(name = "debe_cambiar_credenciales")
+    private Boolean debeCambiarCredenciales = false;
+
     @Column(name = "fecha_creacion", nullable = false, updatable = false)
     private LocalDateTime fechaCreacion = LocalDateTime.now();
 

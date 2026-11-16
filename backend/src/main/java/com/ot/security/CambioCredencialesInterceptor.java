@@ -30,7 +30,9 @@ public class CambioCredencialesInterceptor implements HandlerInterceptor {
             return true;
         }
 
-        if (passwordEncoder.matches(CredencialesSemilla.PASSWORD_ADMIN, usuario.getPasswordHash())) {
+        boolean flag = Boolean.TRUE.equals(usuario.getDebeCambiarCredenciales());
+        boolean semilla = passwordEncoder.matches(CredencialesSemilla.PASSWORD_ADMIN, usuario.getPasswordHash());
+        if (flag || semilla) {
             response.setStatus(HttpServletResponse.SC_FORBIDDEN);
             response.setContentType("application/json;charset=UTF-8");
             response.getWriter().write("{\"codigo\":\"CAMBIO_CREDENCIALES_REQUERIDO\",\"mensaje\":\"Debes cambiar tu nombre, email y contraseña para continuar\"}");

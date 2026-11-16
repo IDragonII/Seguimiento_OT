@@ -2,14 +2,9 @@ import { useEffect, useState } from 'react'
 import { api } from '../api/api'
 import Modal from '../components/Modal'
 
-const VACIO = { nombres: '', apellidos: '', email: '', password: '', rolId: '' }
+const VACIO = { nombres: '', apellidos: '', email: '', password: '', rol: '' }
 
-const ROLES = [
-  { id: 1, nombre: 'ADMIN' },
-  { id: 2, nombre: 'FACTIBILIZADOR' },
-  { id: 3, nombre: 'TECNICO' },
-  { id: 4, nombre: 'CONSULTOR' },
-]
+const ROLES = ['ADMIN', 'FACTIBILIZADOR', 'TECNICO', 'CONSULTOR']
 
 export default function Usuarios() {
   const [usuarios, setUsuarios] = useState([])
@@ -39,7 +34,7 @@ export default function Usuarios() {
         nombres: form.nombres,
         apellidos: form.apellidos,
         email: form.email,
-        rolId: Number(form.rolId),
+        rol: form.rol,
         ...(form.password ? { password: form.password } : {}),
       }
       if (editandoId) {
@@ -65,7 +60,7 @@ export default function Usuarios() {
       apellidos: u.apellidos,
       email: u.email,
       password: '',
-      rolId: u.rol?.id || '',
+      rol: u.rol?.nombre || '',
     })
     setFormAbierto(true)
   }
@@ -140,14 +135,14 @@ export default function Usuarios() {
               <div>
                 <label>Rol</label>
                 <select
-                  value={form.rolId}
-                  onChange={(e) => setForm({ ...form, rolId: e.target.value })}
+                  value={form.rol}
+                  onChange={(e) => setForm({ ...form, rol: e.target.value })}
                   required
                 >
                   <option value="">Seleccione…</option>
                   {ROLES.map((r) => (
-                    <option key={r.id} value={r.id}>
-                      {r.nombre}
+                    <option key={r} value={r}>
+                      {r}
                     </option>
                   ))}
                 </select>
@@ -160,6 +155,11 @@ export default function Usuarios() {
                   onChange={(e) => setForm({ ...form, password: e.target.value })}
                   required={!editandoId}
                 />
+                {(!editandoId || form.password) && (
+                  <small style={{ color: 'var(--muted)', fontSize: 12, display: 'block', marginTop: 4 }}>
+                    El usuario deberá cambiar la contraseña en su primer ingreso.
+                  </small>
+                )}
               </div>
             </div>
             <div className="acciones">

@@ -98,8 +98,11 @@ Content-Type: application/json
 }
 ```
 
-`debeCambiarCredenciales` es `true` mientras la contraseña siga siendo la
-semilla (`Admin123*`) — ver **Primer ingreso** más abajo.
+`debeCambiarCredenciales` es `true` si el usuario debe cambiar sus credenciales
+en el primer ingreso: **flag `debe_cambiar_credenciales`** (se pone en `true`
+al crear el usuario o al resetearle la contraseña un admin) **o** mientras la
+contraseña siga siendo la semilla (`Admin123*`, admin sembrado) — ver
+**Primer ingreso** más abajo.
 
 El campo `modulos` lista las claves de los módulos del **Panel de trabajo**
 permitidas para el rol (`GET /api/auth/me` lo devuelve igual):
@@ -151,8 +154,9 @@ y sin duplicar, contraseña de ≥8 caracteres con mayúscula y número y distin
 de la actual. El email puede conservarse; si cambia, el token anterior queda
 inválido (el subject JWT es el email) y la respuesta incluye uno **nuevo** con
 la misma forma que el login y `debeCambiarCredenciales: false`. Después de
-cambiar, la API queda desbloqueada (la detección es por comparación con la
-contraseña de semilla, sin columna nueva).
+cambiar, la API queda desbloqueada (la detección es por el flag
+`debe_cambiar_credenciales` o, de forma retrocompatible, por comparación con
+la contraseña de semilla).
 
 ---
 
@@ -332,8 +336,8 @@ historial junto a la observación.
 | GET    | `/`             | 🔒      | Lista usuarios |
 | GET    | `/tecnicos`     | 🔒 AF   | Lista solo los usuarios con rol `TECNICO` |
 | GET    | `/{id}`         | 🔒      | Detalle de usuario |
-| POST   | `/`             | 🔒      | Crea usuario (hashea la contraseña con BCrypt) |
-| PUT    | `/{id}`         | 🔒      | Actualiza usuario (contraseña opcional) |
+| POST   | `/`             | 🔒      | Crea usuario (hashea la contraseña con BCrypt; queda marcado para cambiarla en su primer ingreso) |
+| PUT    | `/{id}`         | 🔒      | Actualiza usuario (contraseña opcional; si viene, se marca para cambiarla en el primer ingreso) |
 | PATCH  | `/{id}/estado`  | 🔒      | Activa/desactiva usuario |
 
 **POST /**
@@ -344,9 +348,14 @@ historial junto a la observación.
   "apellidos": "Pérez",
   "email": "ana@ot.local",
   "password": "Secreta123*",
-  "rolId": 3
+  "rol": "FACTIBILIZADOR"
 }
 ```
+
+> `rol` es el **nombre** del rol (`ADMIN` | `FACTIBILIZADOR` | `TECNICO` |
+> `CONSULTOR`). Se acepta también el `rolId` numérico antiguo por compatibilidad,
+> pero los ids de `roles` **no son deterministas** (los crea `DataSeeder` con
+> `Map.of`) — usar siempre `rol` por nombre. `400` si el rol no existe.
 
 **PATCH /{id}/estado**
 
