@@ -1,6 +1,5 @@
 package com.ot.controller;
 
-import com.ot.config.CredencialesSemilla;
 import com.ot.model.Usuario;
 import com.ot.repository.UsuarioRepository;
 import com.ot.security.JwtAuthenticationFilter;
@@ -163,13 +162,12 @@ public class AuthController {
     }
 
     /**
-     * Cambio forzado en el primer ingreso: el flag de la BD (usuarios creados
-     * desde la UI o con contraseña reseteada por un admin) o la contraseña
-     * sigue siendo la semilla (admin sembrado, retrocompatible sin backfill).
+     * Cambio forzado en el primer ingreso: única fuente de verdad el flag de la
+     * BD. Se activa al crear el usuario, al resetearle la contraseña y en el
+     * backfill de arranque de DataSeeder cuando el hash sigue siendo la semilla.
      */
     private boolean debeCambiarCredenciales(Usuario usuario) {
-        return Boolean.TRUE.equals(usuario.getDebeCambiarCredenciales())
-            || passwordEncoder.matches(CredencialesSemilla.PASSWORD_ADMIN, usuario.getPasswordHash());
+        return Boolean.TRUE.equals(usuario.getDebeCambiarCredenciales());
     }
 
     /**
@@ -187,6 +185,8 @@ public class AuthController {
             case "FACTIBILIZADOR" -> List.of(
                 "ordenes-trabajo", "entregas", "devoluciones",
                 "revision", "seguimiento", "historial", "alertas", "reportes");
+            case "INSTALADOR" -> List.of(
+                "ejecucion", "ordenes-trabajo");
             default -> List.of();
         };
     }

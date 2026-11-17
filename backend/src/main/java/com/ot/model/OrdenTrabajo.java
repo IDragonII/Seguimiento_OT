@@ -4,7 +4,7 @@ import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
-
+import org.hibernate.annotations.BatchSize;
 import java.time.LocalDateTime;
 
 @Data
@@ -41,7 +41,10 @@ public class OrdenTrabajo {
     @JoinColumn(name = "categoria_id")
     private CategoriaOT categoria;
 
-    @OneToMany(mappedBy = "ordenTrabajo", fetch = FetchType.EAGER)
+    // LAZY + batch: las listas no cargan materiales salvo que se serialicen
+    // (la carga se resuelve en 1 SELECT IN por lote de 50, no por fila).
+    @OneToMany(mappedBy = "ordenTrabajo", fetch = FetchType.LAZY)
+    @BatchSize(size = 50)
     private java.util.List<OrdenMaterial> materiales = new java.util.ArrayList<>();
 
     @Column(name = "ubicacion", length = 120)

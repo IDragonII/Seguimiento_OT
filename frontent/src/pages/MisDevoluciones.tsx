@@ -32,7 +32,6 @@ interface DetalleMisOT {
   fechaDevolucion?: string | null
   observacion?: string | null
   fechaCreacion?: string
-  fechaProgramacion?: string | null
 }
 
 interface MovHistorial {
@@ -51,6 +50,7 @@ const ACCIONES: Record<string, string> = {
   ENTREGA: 'Entrega al técnico',
   SOLICITUD_DEVOLUCION: 'Solicitud de devolución',
   CONFIRMACION_RECEPCION: 'Confirmación de recepción',
+  PROGRAMACION_EJECUCION: 'Programación para ejecución',
   ALERTA_VENCIMIENTO: 'Alerta de vencimiento',
 }
 

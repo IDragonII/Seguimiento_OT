@@ -1,6 +1,6 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useState } from 'react'
 import {
-  CalendarDays,
+  Clock,
   LayoutGrid,
   List,
   PackageCheck,
@@ -10,8 +10,8 @@ import {
 } from 'lucide-react'
 import { api } from '../api/api'
 import Modal from '../components/Modal'
-import CalendarioMes from '../components/panel/CalendarioMes'
-import { coloresDe, type BaseChip } from '../components/panel/estadosOT'
+import { coloresDe } from '../components/panel/estadosOT'
+import PaginacionPanel from '../components/panel/PaginacionPanel'
 
 interface UsuarioRef {
   id: number
@@ -29,27 +29,6 @@ interface OTInfo {
   descripcion?: string | null
   categoria?: { id?: number; nombre?: string } | null
   ubicacion?: string
-}
-
-interface DetalleProg {
-  id: number
-  ordenTrabajo: OTInfo
-  observacion?: string | null
-  fechaCreacion?: string
-  entregada?: boolean
-}
-
-interface Programacion {
-  id: number
-  fechaProgramacion: string
-  programadoPor?: UsuarioRef | null
-  observacion?: string | null
-  fechaCreacion?: string
-  detalles: DetalleProg[]
-}
-
-interface ChipOT extends BaseChip {
-  programacionId: number
 }
 
 interface DetalleEntrega {
@@ -81,25 +60,10 @@ interface Tecnico {
 }
 
 type ModalState =
-  | { tipo: 'prog-detalle'; id: number }
-  | { tipo: 'nueva-prog' }
-  | { tipo: 'agregar'; id: number }
-  | { tipo: 'reprogramar'; id: number }
-  | { tipo: 'nueva-entrega'; pre?: OTInfo[]; volver?: ModalState }
+  | { tipo: 'nueva-entrega' }
   | { tipo: 'entrega-detalle'; id: number }
   | { tipo: 'recepcion'; id: number }
   | null
-
-function fechaCorta(iso?: string | null): string | undefined {
-  if (!iso) return undefined
-  const [a, m, dia] = iso.slice(0, 10).split('-').map(Number)
-  if (!a || !m || !dia) return undefined
-  return new Date(a, m - 1, dia).toLocaleDateString('es-ES', {
-    day: '2-digit',
-    month: 'short',
-    year: 'numeric',
-  })
-}
 
 function fechaHora(iso?: string | null): string | undefined {
   if (!iso) return undefined
@@ -118,12 +82,6 @@ function nombreDe(u?: UsuarioRef | null): string | undefined {
   if (!u) return undefined
   const nombre = [u.nombres, u.apellidos].filter(Boolean).join(' ').trim()
   return nombre || u.email
-}
-
-function hoyISO(): string {
-  const d = new Date()
-  const pad = (n: number) => String(n).padStart(2, '0')
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`
 }
 
 function ahoraLocal(): string {
@@ -198,495 +156,18 @@ function Pill({ texto, color }: { texto: string; color: string }) {
   )
 }
 
-function esPendiente(d: DetalleProg): boolean {
-  return d.ordenTrabajo?.estado?.nombre === 'PROGRAMADO'
-}
-
-function pillDeOT(d: DetalleProg): { texto: string; color: string } {
-  const estado = d.ordenTrabajo?.estado?.nombre ?? ''
-  if (estado === 'PROGRAMADO') return { texto: 'Pendiente', color: '#D97706' }
-  if (estado === 'ENTREGADO') return { texto: 'Entregada', color: '#27976B' }
-  return { texto: estado || '—', color: '#718096' }
-}
-
-function ModalDetalleProgramacion({
-  prog,
-  puedeEditar,
-  onCerrar,
-  onAgregar,
-  onReprogramar,
-  onEntregar,
-}: {
-  prog: Programacion
-  puedeEditar: boolean
-  onCerrar: () => void
-  onAgregar: () => void
-  onReprogramar: () => void
-  onEntregar: (ots: OTInfo[]) => void
-}) {
-  const pendientes = prog.detalles.filter(esPendiente)
-  return (
-    <Modal
-      titulo={`Programación del ${fechaCorta(prog.fechaProgramacion) ?? ''}`}
-      ancho={600}
-      onCerrar={onCerrar}
-    >
-      <div data-programacion-modal>
-        <div className="mb-4 flex flex-wrap items-center justify-between gap-2 rounded-lg bg-[#E7F0FB] px-3 py-2">
-          <span className="text-sm font-semibold text-[#2C5FA3]">
-            {fechaCorta(prog.fechaProgramacion)}
-          </span>
-          <div className="flex items-center gap-2">
-            <Pill texto={`${prog.detalles.length} OT`} color="#3478C7" />
-            {pendientes.length > 0 ? (
-              <Pill
-                texto={`${pendientes.length} pendiente${pendientes.length === 1 ? '' : 's'}`}
-                color="#D97706"
-              />
-            ) : (
-              <Pill texto="Todo entregado" color="#27976B" />
-            )}
-          </div>
-        </div>
-
-        <h3 className="mb-1 text-xs font-bold uppercase tracking-wide text-[#18283E]">
-          Datos de la programación
-        </h3>
-        <dl className="mb-4">
-          <Fila label="Fecha" valor={fechaCorta(prog.fechaProgramacion)} />
-          <Fila label="Programada por" valor={nombreDe(prog.programadoPor)} />
-          <Fila label="Observación" valor={prog.observacion} />
-          <Fila label="Creada" valor={fechaHora(prog.fechaCreacion)} />
-        </dl>
-
-        <h3 className="mb-2 text-xs font-bold uppercase tracking-wide text-[#18283E]">
-          Órdenes programadas
-        </h3>
-        {prog.detalles.length === 0 ? (
-          <p
-            data-detalle-vacio
-            className="rounded-lg border border-dashed border-[#CBD5E0] p-4 text-center text-xs text-[#718096]"
-          >
-            Sin OTs aún — usa “Agregar OTs” para añadirlas.
-          </p>
-        ) : (
-          <div className="mb-4 overflow-hidden rounded-lg border border-[#E4E8EE]">
-            {prog.detalles.map((d) => {
-              const pill = pillDeOT(d)
-              return (
-                <div
-                  key={d.id}
-                  data-detalle-ot={d.ordenTrabajo.numeroOT}
-                  className="flex flex-wrap items-center gap-x-3 gap-y-1 border-b border-[#EEF1F5] px-3 py-2 last:border-b-0"
-                >
-                  <span className="w-[70px] shrink-0 text-sm font-bold text-[#18283E]">
-                    #{d.ordenTrabajo.numeroOT}
-                  </span>
-                  <span className="min-w-[120px] flex-1 truncate text-xs text-[#55657A]">
-                    {d.ordenTrabajo.tipoOT?.nombre || 'Sin tipo'}
-                  </span>
-                  <BadgeEstado estado={d.ordenTrabajo.estado?.nombre ?? ''} />
-                  <Pill texto={pill.texto} color={pill.color} />
-                </div>
-              )
-            })}
-          </div>
-        )}
-
-        {puedeEditar && (
-          <div className="flex flex-wrap justify-end gap-2 border-t border-[#EEF1F5] pt-4">
-            <button type="button" data-agregar-ots className="btn-secundario" onClick={onAgregar}>
-              <Plus size={14} aria-hidden="true" /> Agregar OTs
-            </button>
-            {pendientes.length > 0 && (
-              <>
-                <button
-                  type="button"
-                  data-entregar
-                  className="btn-secundario"
-                  onClick={() => onEntregar(pendientes.map((d) => d.ordenTrabajo))}
-                >
-                  <Truck size={14} aria-hidden="true" /> Entregar
-                </button>
-                <button type="button" data-reprogramar className="btn" onClick={onReprogramar}>
-                  <CalendarDays size={14} aria-hidden="true" /> Reprogramar
-                </button>
-              </>
-            )}
-          </div>
-        )}
-      </div>
-    </Modal>
-  )
-}
-
-function ModalNuevaProgramacion({
-  onCerrar,
-  onCreada,
-}: {
-  onCerrar: () => void
-  onCreada: (id: number) => void
-}) {
-  const [fecha, setFecha] = useState(hoyISO())
-  const [observacion, setObservacion] = useState('')
-  const [error, setError] = useState('')
-  const [enviando, setEnviando] = useState(false)
-
-  async function enviar() {
-    if (!fecha) {
-      setError('Indica la fecha de la programación')
-      return
-    }
-    setEnviando(true)
-    setError('')
-    try {
-      const nueva = (await api.post('/programaciones', {
-        fechaProgramacion: fecha,
-        observacion,
-      })) as { id: number }
-      onCreada(nueva.id)
-    } catch (err) {
-      setError((err as Error).message || 'No se pudo crear la programación')
-      setEnviando(false)
-    }
-  }
-
-  return (
-    <Modal titulo="Nueva programación" ancho={460} onCerrar={onCerrar}>
-      <div data-nueva-form className="space-y-3">
-        <label className="block">
-          <span className="text-xs font-semibold uppercase tracking-wide text-[#718096]">
-            Fecha
-          </span>
-          <input
-            data-nueva-fecha
-            type="date"
-            value={fecha}
-            onChange={(e) => setFecha(e.target.value)}
-            className="mt-1 w-full rounded-lg border border-[#E4E8EE] px-3 py-2 text-sm text-[#18283E] outline-none focus:border-[#3478C7] focus:ring-2 focus:ring-[#3478C7]/25"
-          />
-        </label>
-        <label className="block">
-          <span className="text-xs font-semibold uppercase tracking-wide text-[#718096]">
-            Observación
-          </span>
-          <textarea
-            data-nueva-obs
-            rows={3}
-            value={observacion}
-            onChange={(e) => setObservacion(e.target.value)}
-            placeholder="Ej: Ruta norte"
-            className="mt-1 w-full rounded-lg border border-[#E4E8EE] px-3 py-2 text-sm text-[#18283E] outline-none focus:border-[#3478C7] focus:ring-2 focus:ring-[#3478C7]/25"
-          />
-        </label>
-        {error && (
-          <div
-            data-nueva-error
-            className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-700"
-          >
-            {error}
-          </div>
-        )}
-        <div className="flex justify-end gap-2 pt-1">
-          <button type="button" data-nueva-cancelar className="btn-secundario" onClick={onCerrar}>
-            Cancelar
-          </button>
-          <button
-            type="button"
-            data-nueva-enviar
-            className="btn"
-            disabled={enviando}
-            onClick={enviar}
-          >
-            {enviando ? 'Creando…' : 'Crear programación'}
-          </button>
-        </div>
-      </div>
-    </Modal>
-  )
-}
-
-function ModalAgregar({
-  prog,
-  onCerrar,
-  onListo,
-}: {
-  prog: Programacion
-  onCerrar: () => void
-  onListo: () => void
-}) {
-  const [disponibles, setDisponibles] = useState<OTInfo[] | null>(null)
-  const [busqueda, setBusqueda] = useState('')
-  const [seleccion, setSeleccion] = useState<number[]>([])
-  const [error, setError] = useState('')
-  const [enviando, setEnviando] = useState(false)
-
-  useEffect(() => {
-    let vivo = true
-    api
-      .get('/ordenes-trabajo/disponibles')
-      .then((lista: OTInfo[]) => {
-        if (vivo) setDisponibles(lista)
-      })
-      .catch((err: Error) => {
-        if (vivo) {
-          setDisponibles([])
-          setError(err.message || 'No se pudieron cargar las OTs disponibles')
-        }
-      })
-    return () => {
-      vivo = false
-    }
-  }, [])
-
-  const visibles = (disponibles ?? []).filter(
-    (ot) => !busqueda || String(ot.numeroOT ?? '').includes(busqueda.trim())
-  )
-
-  function alternar(id: number) {
-    setSeleccion((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]))
-  }
-
-  async function enviar() {
-    setEnviando(true)
-    setError('')
-    try {
-      await api.post(`/programaciones/${prog.id}/ordenes`, { ordenIds: seleccion })
-      onListo()
-    } catch (err) {
-      setError((err as Error).message || 'No se pudieron agregar las OTs')
-      setEnviando(false)
-    }
-  }
-
-  return (
-    <Modal titulo={`Agregar OTs — ${fechaCorta(prog.fechaProgramacion) ?? ''}`} ancho={520} onCerrar={onCerrar}>
-      <div data-agregar-form className="space-y-3">
-        <div className="relative">
-          <Search
-            size={15}
-            className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[#A0AEC0]"
-            aria-hidden="true"
-          />
-          <input
-            data-agregar-buscador
-            type="search"
-            value={busqueda}
-            onChange={(e) => setBusqueda(e.target.value)}
-            placeholder="Buscar por Nº de OT"
-            className="w-full rounded-lg border border-[#E4E8EE] py-2 pl-9 pr-3 text-sm text-[#18283E] outline-none focus:border-[#3478C7] focus:ring-2 focus:ring-[#3478C7]/25"
-          />
-        </div>
-
-        {disponibles === null && !error && (
-          <p className="text-sm text-[#718096]">Cargando OTs disponibles…</p>
-        )}
-
-        {disponibles !== null && disponibles.length === 0 && (
-          <div
-            data-agregar-vacio
-            className="rounded-lg border border-dashed border-[#CBD5E0] p-5 text-center text-sm text-[#718096]"
-          >
-            No hay OTs disponibles para programar.
-          </div>
-        )}
-
-        {disponibles !== null && disponibles.length > 0 && visibles.length === 0 && (
-          <p className="rounded-lg border border-dashed border-[#CBD5E0] p-4 text-center text-xs text-[#718096]">
-            Sin resultados para “{busqueda}”.
-          </p>
-        )}
-
-        {visibles.length > 0 && (
-          <div className="max-h-[280px] overflow-y-auto rounded-lg border border-[#E4E8EE]">
-            {visibles.map((ot) => {
-              const marcada = seleccion.includes(ot.id)
-              return (
-                <label
-                  key={ot.id}
-                  data-ot-check={ot.id}
-                  className={`flex cursor-pointer items-center gap-3 border-b border-[#EEF1F5] px-3 py-2 last:border-b-0 transition ${
-                    marcada ? 'bg-[#EDF4FC]' : 'hover:bg-[#F0F5FB]'
-                  }`}
-                >
-                  <input
-                    type="checkbox"
-                    checked={marcada}
-                    onChange={() => alternar(ot.id)}
-                    className="h-4 w-4 shrink-0 accent-[#3478C7]"
-                  />
-                  <span className="w-[70px] shrink-0 text-sm font-bold text-[#18283E]">
-                    #{ot.numeroOT}
-                  </span>
-                  <span className="min-w-0 flex-1 truncate text-xs text-[#55657A]">
-                    {ot.tipoOT?.nombre || 'Sin tipo'}
-                  </span>
-                  <span className="truncate text-[11px] text-[#718096]">
-                    {ot.ubicacion || '—'}
-                  </span>
-                </label>
-              )
-            })}
-          </div>
-        )}
-
-        <div className="flex items-center justify-between gap-2">
-          <span data-agregar-seleccionados className="text-xs font-medium text-[#718096]">
-            {seleccion.length} seleccionada{seleccion.length === 1 ? '' : 's'}
-          </span>
-          {error && (
-            <span data-agregar-error className="text-xs font-medium text-red-600">
-              {error}
-            </span>
-          )}
-        </div>
-
-        <div className="flex justify-end gap-2 pt-1">
-          <button type="button" data-agregar-cancelar className="btn-secundario" onClick={onCerrar}>
-            Cancelar
-          </button>
-          <button
-            type="button"
-            data-agregar-enviar
-            className="btn"
-            disabled={enviando || seleccion.length === 0}
-            onClick={enviar}
-          >
-            {enviando ? 'Agregando…' : `Agregar${seleccion.length > 0 ? ` (${seleccion.length})` : ''}`}
-          </button>
-        </div>
-      </div>
-    </Modal>
-  )
-}
-
-function ModalReprogramar({
-  prog,
-  onCerrar,
-  onCreada,
-}: {
-  prog: Programacion
-  onCerrar: () => void
-  onCreada: (id: number) => void
-}) {
-  const pendientes = prog.detalles.filter(esPendiente)
-  const [fecha, setFecha] = useState(hoyISO())
-  const [observacion, setObservacion] = useState(prog.observacion ?? '')
-  const [error, setError] = useState('')
-  const [enviando, setEnviando] = useState(false)
-
-  async function enviar() {
-    if (!fecha) {
-      setError('Indica la nueva fecha')
-      return
-    }
-    setEnviando(true)
-    setError('')
-    try {
-      const nueva = (await api.post('/programaciones', {
-        fechaProgramacion: fecha,
-        observacion,
-      })) as { id: number }
-      await api.post(`/programaciones/${nueva.id}/ordenes`, {
-        ordenIds: pendientes.map((d) => d.ordenTrabajo.id),
-      })
-      onCreada(nueva.id)
-    } catch (err) {
-      setError((err as Error).message || 'No se pudo reprogramar')
-      setEnviando(false)
-    }
-  }
-
-  return (
-    <Modal titulo={`Reprogramar — ${fechaCorta(prog.fechaProgramacion) ?? ''}`} ancho={460} onCerrar={onCerrar}>
-      <div data-reprogramar-form className="space-y-3">
-        <p className="text-sm text-[#55657A]">
-          {pendientes.length === 1 ? (
-            <>La OT pendiente se moverá a una nueva programación del </>
-          ) : (
-            <>
-              Las <strong>{pendientes.length}</strong> OTs pendientes se moverán a una nueva
-              programación del{' '}
-            </>
-          )}
-          <strong>{fechaCorta(prog.fechaProgramacion)}</strong>:
-        </p>
-        <div className="rounded-lg border border-[#E4E8EE] bg-[#F8FAFC] px-3 py-2 text-xs text-[#55657A]">
-          {pendientes.map((d) => `#${d.ordenTrabajo.numeroOT}`).join(', ')}
-        </div>
-        <label className="block">
-          <span className="text-xs font-semibold uppercase tracking-wide text-[#718096]">
-            Nueva fecha
-          </span>
-          <input
-            data-reprogramar-fecha
-            type="date"
-            value={fecha}
-            onChange={(e) => setFecha(e.target.value)}
-            className="mt-1 w-full rounded-lg border border-[#E4E8EE] px-3 py-2 text-sm text-[#18283E] outline-none focus:border-[#3478C7] focus:ring-2 focus:ring-[#3478C7]/25"
-          />
-        </label>
-        <label className="block">
-          <span className="text-xs font-semibold uppercase tracking-wide text-[#718096]">
-            Observación
-          </span>
-          <textarea
-            data-reprogramar-obs
-            rows={2}
-            value={observacion}
-            onChange={(e) => setObservacion(e.target.value)}
-            className="mt-1 w-full rounded-lg border border-[#E4E8EE] px-3 py-2 text-sm text-[#18283E] outline-none focus:border-[#3478C7] focus:ring-2 focus:ring-[#3478C7]/25"
-          />
-        </label>
-        {error && (
-          <div
-            data-reprogramar-error
-            className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-700"
-          >
-            {error}
-          </div>
-        )}
-        <div className="flex justify-end gap-2 pt-1">
-          <button
-            type="button"
-            data-reprogramar-cancelar
-            className="btn-secundario"
-            onClick={onCerrar}
-          >
-            Cancelar
-          </button>
-          <button
-            type="button"
-            data-reprogramar-enviar
-            className="btn"
-            disabled={enviando || pendientes.length === 0}
-            onClick={enviar}
-          >
-            {enviando ? 'Reprogramando…' : 'Reprogramar'}
-          </button>
-        </div>
-      </div>
-    </Modal>
-  )
-}
-
 function ModalNuevaEntrega({
-  pre,
   tecnicos,
   onCerrar,
   onCreada,
 }: {
-  pre?: OTInfo[]
   tecnicos: Tecnico[]
   onCerrar: () => void
   onCreada: (id: number) => void
 }) {
-  const esPre = (pre?.length ?? 0) > 0
-  const [origen, setOrigen] = useState<OTInfo[]>(pre ?? [])
-  const [disponibles, setDisponibles] = useState<OTInfo[] | null>(esPre ? [] : null)
-  const [filas, setFilas] = useState<{ ordenId: number; tecnicoId: string }[]>(
-    (pre ?? []).map((o) => ({ ordenId: o.id, tecnicoId: '' }))
-  )
+  const [origen, setOrigen] = useState<OTInfo[]>([])
+  const [disponibles, setDisponibles] = useState<OTInfo[] | null>(null)
+  const [filas, setFilas] = useState<{ ordenId: number; tecnicoId: string }[]>([])
   const [busqueda, setBusqueda] = useState('')
   const [fecha, setFecha] = useState(ahoraLocal())
   const [tecnicoGeneral, setTecnicoGeneral] = useState('')
@@ -695,7 +176,6 @@ function ModalNuevaEntrega({
   const [enviando, setEnviando] = useState(false)
 
   useEffect(() => {
-    if (esPre) return
     let vivo = true
     api
       .get('/ordenes-trabajo/disponibles')
@@ -714,7 +194,7 @@ function ModalNuevaEntrega({
     return () => {
       vivo = false
     }
-  }, [esPre])
+  }, [])
 
   const catalogo = disponibles ?? []
   const disponiblesVisibles = catalogo.filter((o) => {
@@ -773,11 +253,7 @@ function ModalNuevaEntrega({
   }
 
   return (
-    <Modal
-      titulo={esPre ? 'Entregar OTs de la programación' : 'Registrar entrega'}
-      ancho={900}
-      onCerrar={onCerrar}
-    >
+    <Modal titulo="Registrar entrega" ancho={900} onCerrar={onCerrar}>
       <div data-entrega-form className="space-y-4">
         <div className="grid gap-4 lg:grid-cols-[300px_1fr]">
           <div className="space-y-3">
@@ -831,50 +307,48 @@ function ModalNuevaEntrega({
           </div>
 
           <div className="space-y-3">
-            {!esPre && (
-              <div className="rounded-lg border border-[#E4E8EE] px-3 py-2.5">
-                <label className="text-xs font-semibold uppercase tracking-wide text-[#718096]">
-                  OTs a entregar (estado PROGRAMADO)
-                </label>
-                <input
-                  data-entrega-buscador
-                  value={busqueda}
-                  onChange={(e) => setBusqueda(e.target.value)}
-                  placeholder="Buscar por número OT, tipo o descripción…"
-                  className="mt-1 w-full rounded-lg border border-[#E4E8EE] px-3 py-2 text-sm text-[#18283E] outline-none focus:border-[#3478C7] focus:ring-2 focus:ring-[#3478C7]/25"
-                />
-                <div className="mt-2 max-h-[190px] overflow-y-auto">
-                  {disponibles === null && !error && (
-                    <p className="py-1 text-[13px] text-[#718096]">Cargando OTs disponibles…</p>
-                  )}
-                  {disponibles !== null && disponibles.length === 0 && (
-                    <p className="py-1 text-[13px] text-[#718096]">
-                      No hay OT en estado PROGRAMADO disponibles
-                    </p>
-                  )}
-                  {disponibles !== null && disponibles.length > 0 && disponiblesVisibles.length === 0 && (
-                    <p className="py-1 text-[13px] text-[#718096]">
-                      {busqueda ? `Sin resultados para “${busqueda}”` : 'Todas las OT disponibles ya están seleccionadas'}
-                    </p>
-                  )}
-                  {disponiblesVisibles.map((o) => (
-                    <button
-                      key={o.id}
-                      type="button"
-                      data-entrega-check={o.id}
-                      onClick={() => toggleOT(o.id)}
-                      className="flex w-full items-center gap-3 border-b border-[#EEF1F5] px-1 py-2 text-left transition last:border-b-0 hover:bg-[#F0F5FB]"
-                    >
-                      <span className="min-w-0 flex-1 truncate text-[13px] text-[#55657A]">
-                        <strong className="font-bold text-[#18283E]">#{o.numeroOT}</strong> — {o.tipoOT?.nombre}
-                        {o.apellidosNombre && <span className="text-[#718096]"> — {o.apellidosNombre}</span>}
-                      </span>
-                      <span className="shrink-0 text-xs font-semibold text-[#3478C7]">+ Agregar</span>
-                    </button>
-                  ))}
-                </div>
+            <div className="rounded-lg border border-[#E4E8EE] px-3 py-2.5">
+              <label className="text-xs font-semibold uppercase tracking-wide text-[#718096]">
+                OTs a entregar (estado PROGRAMADO)
+              </label>
+              <input
+                data-entrega-buscador
+                value={busqueda}
+                onChange={(e) => setBusqueda(e.target.value)}
+                placeholder="Buscar por número OT, tipo o descripción…"
+                className="mt-1 w-full rounded-lg border border-[#E4E8EE] px-3 py-2 text-sm text-[#18283E] outline-none focus:border-[#3478C7] focus:ring-2 focus:ring-[#3478C7]/25"
+              />
+              <div className="mt-2 max-h-[190px] overflow-y-auto">
+                {disponibles === null && !error && (
+                  <p className="py-1 text-[13px] text-[#718096]">Cargando OTs disponibles…</p>
+                )}
+                {disponibles !== null && disponibles.length === 0 && (
+                  <p className="py-1 text-[13px] text-[#718096]">
+                    No hay OT en estado PROGRAMADO disponibles
+                  </p>
+                )}
+                {disponibles !== null && disponibles.length > 0 && disponiblesVisibles.length === 0 && (
+                  <p className="py-1 text-[13px] text-[#718096]">
+                    {busqueda ? `Sin resultados para “${busqueda}”` : 'Todas las OT disponibles ya están seleccionadas'}
+                  </p>
+                )}
+                {disponiblesVisibles.map((o) => (
+                  <button
+                    key={o.id}
+                    type="button"
+                    data-entrega-check={o.id}
+                    onClick={() => toggleOT(o.id)}
+                    className="flex w-full items-center gap-3 border-b border-[#EEF1F5] px-1 py-2 text-left transition last:border-b-0 hover:bg-[#F0F5FB]"
+                  >
+                    <span className="min-w-0 flex-1 truncate text-[13px] text-[#55657A]">
+                      <strong className="font-bold text-[#18283E]">#{o.numeroOT}</strong> — {o.tipoOT?.nombre}
+                      {o.apellidosNombre && <span className="text-[#718096]"> — {o.apellidosNombre}</span>}
+                    </span>
+                    <span className="shrink-0 text-xs font-semibold text-[#3478C7]">+ Agregar</span>
+                  </button>
+                ))}
               </div>
-            )}
+            </div>
 
             <div className="rounded-lg border border-[#E4E8EE] px-3 py-2.5">
               <label className="text-xs font-semibold uppercase tracking-wide text-[#718096]">
@@ -920,7 +394,8 @@ function ModalNuevaEntrega({
                         data-entrega-quitar={f.ordenId}
                         onClick={() => toggleOT(f.ordenId)}
                         title="Quitar de la selección"
-                        className="btn btn-secundario btn-chico shrink-0 px-2 py-0.5"
+                        aria-label="Quitar de la selección"
+                        className={CLASE_ACCION_ICONO}
                       >
                         ✕
                       </button>
@@ -1022,10 +497,7 @@ function ModalDetalleEntrega({ id, onCerrar }: { id: number; onCerrar: () => voi
           <div className="flex items-center gap-2">
             <Pill texto={`${resp.detalles.length} OT`} color="#3478C7" />
             {pendientes > 0 ? (
-              <Pill
-                texto={`${pendientes} sin recepción`}
-                color="#D97706"
-              />
+              <Pill texto={`${pendientes} sin recepción`} color="#D97706" />
             ) : (
               <Pill texto="Recepción al día" color="#27976B" />
             )}
@@ -1284,76 +756,64 @@ function ModalRecepcion({
 const CLASE_VISTA =
   'inline-flex items-center gap-1.5 rounded-lg px-3 py-2 text-sm font-semibold transition focus:outline-none focus:ring-2 focus:ring-[#3478C7]/40'
 
+const CLASE_ACCION_ICONO =
+  'inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-[#E4E8EE] bg-white text-[#55657A] transition hover:border-[#3478C7] hover:text-[#3478C7] focus:outline-none focus:ring-2 focus:ring-[#3478C7]/40'
+
 export default function EntregasPanel() {
   const usuario = api.getUsuario()
   const puedeEditar = usuario?.rol === 'FACTIBILIZADOR'
 
-  const [progs, setProgs] = useState<Programacion[] | null>(null)
   const [entregas, setEntregas] = useState<Entrega[] | null>(null)
   const [tecnicos, setTecnicos] = useState<Tecnico[]>([])
   const [error, setError] = useState('')
   const [ok, setOk] = useState('')
-  const [vista, setVista] = useState<'calendario' | 'entregas'>('calendario')
   const [subvista, setSubvista] = useState<'lista' | 'fichas'>('lista')
   const [busqueda, setBusqueda] = useState('')
   const [orden, setOrden] = useState('reciente')
+  const [page, setPage] = useState(0)
   const [modal, setModal] = useState<ModalState>(null)
-
-  const hoy = useMemo(() => new Date(), [])
-  const [anio, setAnio] = useState(() => hoy.getFullYear())
-  const [mes, setMes] = useState(() => hoy.getMonth())
 
   async function recargar() {
     try {
-      const [p, e] = await Promise.all([
-        api.get('/programaciones'),
-        api.get('/entregas'),
-      ])
-      setProgs(p as Programacion[])
+      const e = await api.get('/entregas')
       setEntregas(e as Entrega[])
       setError('')
     } catch (err) {
-      setError((err as Error).message || 'No se pudieron cargar los datos')
+      setError((err as Error).message || 'No se pudieron cargar las entregas')
     }
   }
 
   useEffect(() => {
-    recargar()
+    let vivo = true
+    api
+      .get('/entregas')
+      .then((e: Entrega[]) => {
+        if (vivo) {
+          setEntregas(e)
+          setError('')
+        }
+      })
+      .catch((err: Error) => {
+        if (vivo) setError(err.message || 'No se pudieron cargar las entregas')
+      })
     api
       .get('/usuarios/tecnicos')
-      .then((t: Tecnico[]) => setTecnicos(t))
-      .catch(() => setTecnicos([]))
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+      .then((t: Tecnico[]) => {
+        if (vivo) setTecnicos(t)
+      })
+      .catch(() => {
+        if (vivo) setTecnicos([])
+      })
+    return () => {
+      vivo = false
+    }
   }, [])
 
-  const datos = useMemo(() => {
-    const acc: Record<string, ChipOT[]> = {}
-    for (const p of progs ?? []) {
-      const clave = p.fechaProgramacion.slice(0, 10)
-      for (const d of p.detalles ?? []) {
-        if (!acc[clave]) acc[clave] = []
-        acc[clave].push({
-          numeroOT: d.ordenTrabajo.numeroOT ?? 0,
-          estado: d.ordenTrabajo.estado?.nombre ?? '',
-          programacionId: p.id,
-        })
-      }
-    }
-    return acc
-  }, [progs])
-
-  const tituloMes = new Date(anio, mes, 1).toLocaleDateString('es-ES', {
-    month: 'long',
-    year: 'numeric',
-  })
-
   const listaEntregas = entregas ?? []
-  const totalPendientesEntregar = new Set(
-    (progs ?? [])
-      .flatMap((p) => p.detalles)
-      .filter((d) => d.ordenTrabajo?.estado?.nombre === 'PROGRAMADO')
-      .map((d) => d.ordenTrabajo.id)
-  ).size
+  const totalOtsEntregadas = listaEntregas.reduce(
+    (n, e) => n + e.detalles.length,
+    0
+  )
   const totalSinRecepcion = listaEntregas.reduce(
     (n, e) =>
       n + e.detalles.filter((d) => d.ordenTrabajo?.estado?.nombre === 'ENTREGADO').length,
@@ -1376,23 +836,18 @@ export default function EntregasPanel() {
       : (b.fechaEntrega ?? '').localeCompare(a.fechaEntrega ?? '')
   )
 
+  const POR_PAGINA = 15
+  const totalPaginas = Math.max(1, Math.ceil(visibles.length / POR_PAGINA))
+  const paginaActual = Math.min(page, totalPaginas - 1)
+  const enPagina = visibles.slice(
+    paginaActual * POR_PAGINA,
+    paginaActual * POR_PAGINA + POR_PAGINA
+  )
+
   const conRecepcionPendiente = (e: Entrega) =>
     e.detalles.some((d) => d.ordenTrabajo?.estado?.nombre === 'ENTREGADO')
   const nRecepcionPendiente = (e: Entrega) =>
     e.detalles.filter((d) => d.ordenTrabajo?.estado?.nombre === 'ENTREGADO').length
-
-  const progId =
-    modal &&
-    (modal.tipo === 'prog-detalle' || modal.tipo === 'agregar' || modal.tipo === 'reprogramar')
-      ? modal.id
-      : null
-  const progModal =
-    progId != null ? (progs ?? []).find((p) => p.id === progId) ?? null : null
-
-  async function trasCrearProg(id: number) {
-    await recargar()
-    setModal({ tipo: 'prog-detalle', id })
-  }
 
   async function trasEntregaCreada(id: number) {
     await recargar()
@@ -1413,7 +868,7 @@ export default function EntregasPanel() {
           <div className="min-w-[240px]">
             <h1 className="text-2xl font-bold text-[#18283E]">Entregas</h1>
             <p className="mt-0.5 text-sm text-[#718096]">
-              Programación, entregas y recepción de OT
+              Entrega de OT a técnicos y recepción
             </p>
           </div>
           <div data-indicadores className="flex flex-wrap items-center gap-y-3 divide-x divide-[#E4E8EE]">
@@ -1425,15 +880,15 @@ export default function EntregasPanel() {
               color="#3478C7"
             />
             <Indicador
-              id="PROGRAMADAS"
-              icono={CalendarDays}
-              valor={totalPendientesEntregar}
-              etiqueta="Pend. entregar"
-              color="#718096"
+              id="OT-ENTREGADAS"
+              icono={PackageCheck}
+              valor={totalOtsEntregadas}
+              etiqueta="OT entregadas"
+              color="#27976B"
             />
             <Indicador
               id="PENDIENTES"
-              icono={PackageCheck}
+              icono={Clock}
               valor={totalSinRecepcion}
               etiqueta="Sin recepción"
               color="#D97706"
@@ -1458,170 +913,103 @@ export default function EntregasPanel() {
           </div>
         )}
 
-        {(progs === null || entregas === null) && !error && (
+        {entregas === null && !error && (
           <div className="rounded-xl border border-[#E4E8EE] bg-white p-8 text-center text-sm text-[#718096]">
-            Cargando entregas y programaciones…
+            Cargando entregas…
           </div>
         )}
 
-        {progs !== null && entregas !== null && (
+        {entregas !== null && (
           <div className="flex flex-wrap items-center gap-2.5 rounded-xl border border-[#E4E8EE] bg-white px-4 py-3">
             <div className="flex overflow-hidden rounded-lg border border-[#E4E8EE]">
               <button
                 type="button"
-                data-vista="calendario"
-                aria-pressed={vista === 'calendario'}
-                onClick={() => setVista('calendario')}
+                data-subvista="lista"
+                aria-pressed={subvista === 'lista'}
+                onClick={() => setSubvista('lista')}
                 className={`${CLASE_VISTA} ${
-                  vista === 'calendario'
+                  subvista === 'lista'
                     ? 'bg-[#3478C7] text-white'
                     : 'bg-white text-[#55657A] hover:bg-[#F0F5FB]'
                 }`}
               >
-                <CalendarDays size={15} aria-hidden="true" />
-                Calendario
+                <List size={15} aria-hidden="true" />
+                Lista
               </button>
               <button
                 type="button"
-                data-vista="entregas"
-                aria-pressed={vista === 'entregas'}
-                onClick={() => setVista('entregas')}
+                data-subvista="fichas"
+                aria-pressed={subvista === 'fichas'}
+                onClick={() => setSubvista('fichas')}
                 className={`${CLASE_VISTA} border-l border-[#E4E8EE] ${
-                  vista === 'entregas'
+                  subvista === 'fichas'
                     ? 'bg-[#3478C7] text-white'
                     : 'bg-white text-[#55657A] hover:bg-[#F0F5FB]'
                 }`}
               >
-                <Truck size={15} aria-hidden="true" />
-                Entregas
+                <LayoutGrid size={15} aria-hidden="true" />
+                Fichas
               </button>
             </div>
 
-            {vista === 'calendario' && puedeEditar && (
+            <div className="relative min-w-[190px] flex-1">
+              <Search
+                size={15}
+                className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[#A0AEC0]"
+                aria-hidden="true"
+              />
+              <input
+                data-buscador
+                type="search"
+                value={busqueda}
+                onChange={(e) => {
+                  setBusqueda(e.target.value)
+                  setPage(0)
+                }}
+                placeholder="Buscar por Nº de OT, observación o técnico…"
+                className="w-full rounded-lg border border-[#E4E8EE] py-2 pl-9 pr-3 text-sm text-[#18283E] outline-none focus:border-[#3478C7] focus:ring-2 focus:ring-[#3478C7]/25"
+              />
+            </div>
+
+            <select
+              data-orden
+              value={orden}
+              onChange={(e) => {
+                setOrden(e.target.value)
+                setPage(0)
+              }}
+              className="rounded-lg border border-[#E4E8EE] bg-white px-2.5 py-2 text-sm text-[#18283E] outline-none focus:border-[#3478C7]"
+            >
+              <option value="reciente">Más reciente</option>
+              <option value="antigua">Más antigua</option>
+            </select>
+
+            <span data-resultados className="text-xs font-medium text-[#718096]">
+              {visibles.length} resultado{visibles.length === 1 ? '' : 's'}
+            </span>
+
+            <PaginacionPanel
+              page={paginaActual}
+              size={POR_PAGINA}
+              total={visibles.length}
+              setPage={setPage}
+            />
+
+            {puedeEditar && (
               <button
                 type="button"
-                data-nueva-programacion
+                data-nueva-entrega
                 className="btn ml-auto"
-                onClick={() => setModal({ tipo: 'nueva-prog' })}
+                onClick={() => setModal({ tipo: 'nueva-entrega' })}
               >
                 <Plus size={15} aria-hidden="true" />
-                Nueva programación
+                Nueva entrega
               </button>
-            )}
-
-            {vista === 'entregas' && (
-              <>
-                <div className="flex overflow-hidden rounded-lg border border-[#E4E8EE]">
-                  <button
-                    type="button"
-                    data-subvista="lista"
-                    aria-pressed={subvista === 'lista'}
-                    onClick={() => setSubvista('lista')}
-                    className={`${CLASE_VISTA} ${
-                      subvista === 'lista'
-                        ? 'bg-[#3478C7] text-white'
-                        : 'bg-white text-[#55657A] hover:bg-[#F0F5FB]'
-                    }`}
-                  >
-                    <List size={15} aria-hidden="true" />
-                    Lista
-                  </button>
-                  <button
-                    type="button"
-                    data-subvista="fichas"
-                    aria-pressed={subvista === 'fichas'}
-                    onClick={() => setSubvista('fichas')}
-                    className={`${CLASE_VISTA} border-l border-[#E4E8EE] ${
-                      subvista === 'fichas'
-                        ? 'bg-[#3478C7] text-white'
-                        : 'bg-white text-[#55657A] hover:bg-[#F0F5FB]'
-                    }`}
-                  >
-                    <LayoutGrid size={15} aria-hidden="true" />
-                    Fichas
-                  </button>
-                </div>
-
-                <div className="relative min-w-[190px] flex-1">
-                  <Search
-                    size={15}
-                    className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[#A0AEC0]"
-                    aria-hidden="true"
-                  />
-                  <input
-                    data-buscador
-                    type="search"
-                    value={busqueda}
-                    onChange={(e) => setBusqueda(e.target.value)}
-                    placeholder="Buscar por Nº de OT, observación o técnico…"
-                    className="w-full rounded-lg border border-[#E4E8EE] py-2 pl-9 pr-3 text-sm text-[#18283E] outline-none focus:border-[#3478C7] focus:ring-2 focus:ring-[#3478C7]/25"
-                  />
-                </div>
-
-                <select
-                  data-orden
-                  value={orden}
-                  onChange={(e) => setOrden(e.target.value)}
-                  className="rounded-lg border border-[#E4E8EE] bg-white px-2.5 py-2 text-sm text-[#18283E] outline-none focus:border-[#3478C7]"
-                >
-                  <option value="reciente">Más reciente</option>
-                  <option value="antigua">Más antigua</option>
-                </select>
-
-                <span data-resultados className="text-xs font-medium text-[#718096]">
-                  {visibles.length} resultado{visibles.length === 1 ? '' : 's'}
-                </span>
-
-                {puedeEditar && (
-                  <button
-                    type="button"
-                    data-nueva-entrega
-                    className="btn ml-auto"
-                    onClick={() => setModal({ tipo: 'nueva-entrega' })}
-                  >
-                    <Plus size={15} aria-hidden="true" />
-                    Nueva entrega
-                  </button>
-                )}
-              </>
             )}
           </div>
         )}
 
-        {progs !== null && entregas !== null && vista === 'calendario' && (
-          <CalendarioMes<ChipOT>
-            anio={anio}
-            mes={mes}
-            hoy={hoy}
-            datos={datos}
-            tituloMes={tituloMes}
-            onAnterior={() => {
-              if (mes === 0) {
-                setMes(11)
-                setAnio((a) => a - 1)
-              } else {
-                setMes((m) => m - 1)
-              }
-            }}
-            onSiguiente={() => {
-              if (mes === 11) {
-                setMes(0)
-                setAnio((a) => a + 1)
-              } else {
-                setMes((m) => m + 1)
-              }
-            }}
-            onHoy={() => {
-              setAnio(hoy.getFullYear())
-              setMes(hoy.getMonth())
-            }}
-            onSeleccionar={(chip) =>
-              setModal({ tipo: 'prog-detalle', id: chip.programacionId })
-            }
-          />
-        )}
-
-        {progs !== null && entregas !== null && vista === 'entregas' && (
+        {entregas !== null && (
           <>
             {listaEntregas.length === 0 && (
               <div
@@ -1644,8 +1032,8 @@ export default function EntregasPanel() {
             )}
 
             {visibles.length > 0 && subvista === 'lista' && (
-              <div className="overflow-hidden rounded-xl border border-[#E4E8EE] bg-white">
-                {visibles.map((e) => {
+              <div className="max-h-[calc(100vh-300px)] overflow-y-auto rounded-xl border border-[#E4E8EE] bg-white">
+                {enPagina.map((e) => {
                   const pendientes = conRecepcionPendiente(e)
                   return (
                     <div
@@ -1685,13 +1073,15 @@ export default function EntregasPanel() {
                         <button
                           type="button"
                           data-recepcion={e.id}
+                          title="Registrar recepción"
+                          aria-label="Registrar recepción"
                           onClick={(ev) => {
                             ev.stopPropagation()
                             setModal({ tipo: 'recepcion', id: e.id })
                           }}
-                          className="btn btn-secundario btn-chico shrink-0"
+                          className={`${CLASE_ACCION_ICONO} shrink-0`}
                         >
-                          Recepción
+                          <PackageCheck size={16} aria-hidden="true" />
                         </button>
                       )}
                       <span className="text-[11px] text-[#718096]">Ver detalle →</span>
@@ -1702,8 +1092,8 @@ export default function EntregasPanel() {
             )}
 
             {visibles.length > 0 && subvista === 'fichas' && (
-              <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
-                {visibles.map((e) => {
+              <div className="grid max-h-[calc(100vh-300px)] gap-3 overflow-y-auto pr-1 sm:grid-cols-2 xl:grid-cols-3">
+                {enPagina.map((e) => {
                   const pendientes = conRecepcionPendiente(e)
                   return (
                     <div
@@ -1748,13 +1138,15 @@ export default function EntregasPanel() {
                               <button
                                 type="button"
                                 data-recepcion={e.id}
+                                title="Registrar recepción"
+                                aria-label="Registrar recepción"
                                 onClick={(ev) => {
                                   ev.stopPropagation()
                                   setModal({ tipo: 'recepcion', id: e.id })
                                 }}
-                                className="btn btn-secundario btn-chico"
+                                className={CLASE_ACCION_ICONO}
                               >
-                                Recepción
+                                <PackageCheck size={16} aria-hidden="true" />
                               </button>
                             )}
                           </div>
@@ -1772,56 +1164,10 @@ export default function EntregasPanel() {
         )}
       </div>
 
-      {modal?.tipo === 'prog-detalle' && progModal && (
-        <ModalDetalleProgramacion
-          prog={progModal}
-          puedeEditar={puedeEditar}
-          onCerrar={() => setModal(null)}
-          onAgregar={() => setModal({ tipo: 'agregar', id: modal.id })}
-          onReprogramar={() => setModal({ tipo: 'reprogramar', id: modal.id })}
-          onEntregar={(ots) =>
-            setModal({
-              tipo: 'nueva-entrega',
-              pre: ots,
-              volver: { tipo: 'prog-detalle', id: modal.id },
-            })
-          }
-        />
-      )}
-      {modal?.tipo === 'nueva-prog' && (
-        <ModalNuevaProgramacion
-          onCerrar={() => setModal(null)}
-          onCreada={(id) => {
-            void trasCrearProg(id)
-          }}
-        />
-      )}
-      {modal?.tipo === 'agregar' && progModal && (
-        <ModalAgregar
-          prog={progModal}
-          onCerrar={() => setModal({ tipo: 'prog-detalle', id: modal.id })}
-          onListo={() => {
-            void (async () => {
-              await recargar()
-              setModal({ tipo: 'prog-detalle', id: modal.id })
-            })()
-          }}
-        />
-      )}
-      {modal?.tipo === 'reprogramar' && progModal && (
-        <ModalReprogramar
-          prog={progModal}
-          onCerrar={() => setModal({ tipo: 'prog-detalle', id: modal.id })}
-          onCreada={(id) => {
-            void trasCrearProg(id)
-          }}
-        />
-      )}
       {modal?.tipo === 'nueva-entrega' && (
         <ModalNuevaEntrega
-          pre={modal.pre}
           tecnicos={tecnicos}
-          onCerrar={() => setModal(modal.volver ?? null)}
+          onCerrar={() => setModal(null)}
           onCreada={(id) => {
             void trasEntregaCreada(id)
           }}

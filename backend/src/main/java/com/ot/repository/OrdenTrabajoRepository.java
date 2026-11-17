@@ -14,9 +14,15 @@ public interface OrdenTrabajoRepository extends JpaRepository<OrdenTrabajo, Long
     Optional<OrdenTrabajo> findByTipoOT_IdAndNumeroOT(Long tipoOTId, Integer numeroOT);
     boolean existsByTipoOT_IdAndNumeroOT(Long tipoOTId, Integer numeroOT);
 
-    @Query("SELECT o FROM OrdenTrabajo o WHERE o.estado.nombre = 'PROGRAMADO' " +
-           "AND NOT EXISTS (SELECT pd FROM ProgramacionDetalle pd WHERE pd.ordenTrabajo = o)")
+    // OTs listas para entregar: el estado PROGRAMADO es el inicial de toda OT creada.
+    // No depende de programaciones (esa capa ya no se usa).
+    @Query("SELECT o FROM OrdenTrabajo o WHERE o.estado.nombre = 'PROGRAMADO'")
     List<OrdenTrabajo> findDisponibles();
+
+    // OTs devueltas por el técnico: el instalador las programa para ejecución.
+    @Query("SELECT o FROM OrdenTrabajo o WHERE o.estado.nombre = 'DEVUELTO' "
+        + "ORDER BY o.fechaInicioEstado ASC")
+    List<OrdenTrabajo> findDevueltas();
 
     List<OrdenTrabajo> findByEstadoIn(List<EstadoOT> estados);
 }

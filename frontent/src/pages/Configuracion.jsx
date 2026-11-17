@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { Save, Timer, TimerOff } from 'lucide-react'
 import { api } from '../api/api'
 import Modal from '../components/Modal'
 
@@ -107,6 +108,7 @@ export default function Configuracion() {
         {configs.length === 0 ? (
           <div className="vacio">No hay configuraciones</div>
         ) : (
+          <div className="tabla-scroll">
           <table>
             <thead>
               <tr>
@@ -145,14 +147,23 @@ export default function Configuracion() {
                       {new Date(c.fechaActualizacion).toLocaleDateString()}
                     </td>
                     <td data-label="">
-                      <div style={{ display: 'flex', gap: 6 }}>
+                      <div className="acciones-fila">
                         {conLimite && (
-                          <button className="btn btn-chico" onClick={() => guardar(c)}>
-                            Guardar
+                          <button
+                            type="button"
+                            className="btn-icono"
+                            title="Guardar días hábiles"
+                            aria-label="Guardar días hábiles"
+                            onClick={() => guardar(c)}
+                          >
+                            <Save size={16} />
                           </button>
                         )}
                         <button
-                          className={`btn btn-chico ${conLimite ? 'btn-peligro' : ''}`}
+                          type="button"
+                          className={`btn-icono ${conLimite ? 'btn-icono-peligro' : ''}`}
+                          title={conLimite ? 'Quitar límite' : 'Poner límite'}
+                          aria-label={conLimite ? 'Quitar límite' : 'Poner límite'}
                           onClick={() =>
                             setConfirmacion({
                               id: c.id,
@@ -161,7 +172,7 @@ export default function Configuracion() {
                             })
                           }
                         >
-                          {conLimite ? 'Sin límite' : 'Poner límite'}
+                          {conLimite ? <TimerOff size={16} /> : <Timer size={16} />}
                         </button>
                       </div>
                     </td>
@@ -170,6 +181,7 @@ export default function Configuracion() {
               })}
             </tbody>
           </table>
+          </div>
         )}
       </div>
 

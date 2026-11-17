@@ -39,6 +39,12 @@ public class UsuarioController {
         return ResponseEntity.ok(usuarioRepository.findAll());
     }
 
+    @GetMapping("/conteo")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<Long> getConteo() {
+        return ResponseEntity.ok(usuarioRepository.count());
+    }
+
     @GetMapping("/{id}")
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<Usuario> getById(@PathVariable Long id) {

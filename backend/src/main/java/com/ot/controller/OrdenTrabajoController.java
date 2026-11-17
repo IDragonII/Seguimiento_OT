@@ -5,6 +5,7 @@ import com.ot.repository.*;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDateTime;
@@ -42,13 +43,28 @@ public class OrdenTrabajoController {
     }
 
     @GetMapping
+    @Transactional(readOnly = true)
     public ResponseEntity<List<OrdenTrabajo>> getAll() {
-        return ResponseEntity.ok(ordenRepository.findAll());
+        List<OrdenTrabajo> ordenes = ordenRepository.findAll();
+        // Inicializa los materiales dentro de la transacción (1 SELECT IN por
+        // lote de 50 con @BatchSize) para no depender de Open-Session-In-View
+        // ni provocar un N+1 al serializar la lista.
+        ordenes.forEach(o -> o.getMateriales().size());
+        return ResponseEntity.ok(ordenes);
     }
 
     @GetMapping("/disponibles")
     public ResponseEntity<List<OrdenTrabajo>> getDisponibles() {
         return ResponseEntity.ok(ordenRepository.findDisponibles());
+    }
+
+    @GetMapping("/devueltas")
+    @Transactional(readOnly = true)
+    public ResponseEntity<List<OrdenTrabajo>> getDevueltas() {
+        List<OrdenTrabajo> ordenes = ordenRepository.findDevueltas();
+        // Igual que en getAll(): inicializa materiales dentro de la transacción.
+        ordenes.forEach(o -> o.getMateriales().size());
+        return ResponseEntity.ok(ordenes);
     }
 
     @GetMapping("/{id}")
@@ -262,6 +278,48 @@ public class OrdenTrabajoController {
         }).orElse(ResponseEntity.notFound().build());
     }
 
+    /**
+     * Paso del INSTALADOR: una OT devuelta por el técnico vuelve a estado
+     * PROGRAMADO para que pueda entregarse de nuevo (queda lista para
+     * ejecución). No fija fecha: la programación es el estado del flujo.
+     */
+    @PutMapping("/{id}/programar-ejecucion")
+    @PreAuthorize("hasAnyRole('ADMIN','INSTALADOR')")
+    @Transactional
+    public ResponseEntity<?> programarEjecucion(@PathVariable Long id,
+                                                @RequestBody(required = false) ProgramacionEjecucionRequest request,
+                                                Authentication auth) {
+        OrdenTrabajo orden = ordenRepository.findById(id).orElse(null);
+        if (orden == null) {
+            return ResponseEntity.notFound().build();
+        }
+
+        EstadoOT estadoAnterior = orden.getEstado();
+        if (estadoAnterior == null || !"DEVUELTO".equals(estadoAnterior.getNombre())) {
+            return ResponseEntity.badRequest()
+                .body(Map.of("mensaje", "Solo se pueden programar OT en estado DEVUELTO"));
+        }
+
+        EstadoOT estadoProgramado = estadoRepository.findByNombre("PROGRAMADO").orElseThrow();
+        orden.setEstado(estadoProgramado);
+        orden.setFechaInicioEstado(LocalDateTime.now());
+        OrdenTrabajo saved = ordenRepository.save(orden);
+
+        Usuario usuario = usuarioRepository.findByEmail(auth.getName()).orElseThrow();
+        String observacion = request != null ? request.getObservacion() : null;
+        HistorialOT historial = new HistorialOT();
+        historial.setOrdenTrabajo(saved);
+        historial.setUsuario(usuario);
+        historial.setEstadoAnterior(estadoAnterior);
+        historial.setEstadoNuevo(estadoProgramado);
+        historial.setAccion("PROGRAMACION_EJECUCION");
+        historial.setObservacion(observacion != null && !observacion.isBlank()
+            ? observacion.trim() : "OT programada para ejecución");
+        historialRepository.save(historial);
+
+        return ResponseEntity.ok(ordenRepository.findById(id).orElse(saved));
+    }
+
     @GetMapping("/mis-historial")
     public ResponseEntity<List<HistorialOT>> getMisHistorial(Authentication auth) {
         Usuario usuario = usuarioRepository.findByEmail(auth.getName()).orElseThrow();
@@ -292,6 +350,13 @@ public class OrdenTrabajoController {
 
         public List<MaterialAsignacion> getMateriales() { return materiales; }
         public void setMateriales(List<MaterialAsignacion> materiales) { this.materiales = materiales; }
+    }
+
+    public static class ProgramacionEjecucionRequest {
+        private String observacion;
+
+        public String getObservacion() { return observacion; }
+        public void setObservacion(String observacion) { this.observacion = observacion; }
     }
 
     public static class MaterialAsignacion {

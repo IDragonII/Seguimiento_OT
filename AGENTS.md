@@ -48,10 +48,12 @@
   con `Map.of(...)` cuyo orden de iteración no está garantizado (en la BD viva
   quedó `1=CONSULTOR, 2=TECNICO, 3=FACTIBILIZADOR, 4=ADMIN`, ≠ `db.sql`).
   Hardcodear ids en el frontend asigna roles cruzados en silencio.
-- **Primer ingreso forzado** (`debeCambiarCredenciales`): flag real
-  `usuarios.debe_cambiar_credenciales` (true al crear el usuario o al
-  resetearle la contraseña) **o** hash == semilla `Admin123*` (retrocompat).
-  Se limpia en `PUT /api/auth/cambio-inicial`. No existe registro público.
+- **Primer ingreso forzado** (`debeCambiarCredenciales`): única fuente de
+  verdad el flag real `usuarios.debe_cambiar_credenciales` (true al crear el
+  usuario o al resetearle la contraseña). `DataSeeder` hace un **backfill
+  idempotente** al arrancar: si el hash del admin sigue siendo la semilla
+  `Admin123*` y el flag está apagado, lo vuelve a encender. Se limpia en
+  `PUT /api/auth/cambio-inicial`. No existe registro público.
 
 ## Credenciales de prueba
 
@@ -63,9 +65,10 @@
     por overlay — prop `forzado` de `Modal.jsx`) y `403` con
     `codigo: CAMBIO_CREDENCIALES_REQUERIDO` en toda la API hasta completar el
     cambio (`PUT /api/auth/cambio-inicial`, interceptor
-    `CambioCredencialesInterceptor`). La detección es "la contraseña sigue
-    siendo la semilla" (`passwordEncoder.matches`) — sin columna nueva, vale
-    para todas las DBs.
+    `CambioCredencialesInterceptor`). El interceptor solo lee el flag en
+    memoria (sin BCrypt por request); la semilla se detecta en el backfill de
+    arranque de `DataSeeder`, que enciende el flag si el hash sigue siendo
+    `Admin123*`.
   - El E2E prueba el flujo completo en **cada** corrida y **restaura
     `Admin123*` al terminar** (vía `PUT /api/usuarios/{id}`) para que siempre
     arranque en primer ingreso; el password que usa durante la corrida es
@@ -77,11 +80,13 @@
 - Técnico (panel): `maria@ot.local` / `Tecnico123*`
 - Factibilidad (panel): `factibilidad@ot.local` / `Factibilidad123*`
 - Consultor (panel): `consultor@ot.local` / `Consultor123*`
+- Instalador (panel): **no viene sembrado** — crearlo desde Usuarios con rol
+  INSTALADOR (el selector de rol ya lo incluye).
 
 ## Panel de trabajo (roles no admin)
 
 - El login bifurca por rol: ADMIN → `/` (app existente, intacta);
-  TECNICO/CONSULTOR/FACTIBILIZADOR → `/panel`.
+  TECNICO/CONSULTOR/FACTIBILIZADOR/INSTALADOR → `/panel`.
 - Los módulos los sirve el backend (`modulos[]` en `POST /api/auth/login` y
   `GET /api/auth/me`); catálogo en `frontent/src/components/panel/modulos.js`.
 - Al presionar un módulo sin vista propia se muestra el anuncio
@@ -116,44 +121,43 @@
   indicadores movimientos / OTs / últimos 7 días; toolbar (buscador Nº OT,
   acción, rango de fechas, orden); modal con datos del movimiento + ficha de
   la OT + timeline. Ambas vistas en `App.jsx` vía `VISTAS_MODULO`.
-- **Módulo `entregas` construido** (FUSIÓN de `programaciones` + entregas;
-  CONSULTOR y FACTIBILIZADOR): `frontent/src/pages/EntregasPanel.tsx`
+- **Módulo `entregas` construido** (SOLO entregas — **la programación ya no
+  se usa**; CONSULTOR y FACTIBILIZADOR): `frontent/src/pages/EntregasPanel.tsx`
   (TSX + Tailwind, en `VISTAS_MODULO`; `Programaciones.tsx` fue **eliminado**
   y la clave `programaciones` salió de `modulosPorRol` — CONSULTOR queda en
-  **6** tarjetas y FACTIBILIZADOR en **8**). Dos vistas con toggle
-  `data-vista` (Calendario | Entregas) en el toolbar: **Calendario** usa
-  `components/panel/CalendarioMes.tsx` (chips OT → detalle de programación
-  con pills por estado real + acciones Agregar OTs / Entregar / Reprogramar)
-  y **Entregas** tiene subvistas lista/fichas (`data-subvista`), buscador,
-  orden y contador. 3 indicadores `data-indicador` = ENTREGAS /
-  PROGRAMADAS ("Pend. entregar" = OTs en estado `PROGRAMADO`) / PENDIENTES
-  ("Sin recepción"). Siete modales locales con estado único `ModalState`
-  (**nunca apilados**): DetalleProgramacion, NuevaProgramacion
-  (`POST /api/programaciones`), Agregar (checklist
-  `GET /api/ordenes-trabajo/disponibles` → `POST /{id}/ordenes`),
-  Reprogramar (copia OTs pendientes a fecha nueva), NuevaEntrega (modo
-  standalone con checklist de `disponibles` y modo "pre" desde el detalle de
-  programación que precarga OTs `PROGRAMADO`; técnico general + individual
-  por fila → `POST /api/entregas` → `{entrega.id}`), DetalleEntrega
-  (`GET /api/entregas/{id}` → `{entrega, detalles}`) y Recepción (checkbox
-  por OT recibible + ubicación → `POST /{id}/recepcion`). CONSULTOR 100%
-  solo lectura (acciones gateadas por `puedeEditable`; el badge informativo
-  "sin recepción" sí se muestra; verificado en E2E caso [3]). **Backend**:
+  **6** tarjetas y FACTIBILIZADOR en **8**). Una sola vista **Entregas** con
+  subvistas lista/fichas (`data-subvista`), buscador, orden, contador y
+  **paginación** 15 por página (también en la vista fichas); el
+  listado es lo único que hace scroll (`max-h-[calc(100vh-300px)]`) y las
+  acciones son **solo icono** con `title`/`aria-label`. 3 indicadores
+  `data-indicador` = ENTREGAS / OT-ENTREGADAS / PENDIENTES ("Sin recepción").
+  Tres modales locales con estado único `ModalState` (**nunca apilados**):
+  NuevaEntrega (checklist `GET /api/ordenes-trabajo/disponibles`; técnico
+  general + individual por fila → `POST /api/entregas` → `{entrega.id}`),
+  DetalleEntrega (`GET /api/entregas/{id}` → `{entrega, detalles}`) y
+  Recepción (checkbox por OT recibible + ubicación → `POST /{id}/recepcion`).
+  CONSULTOR 100% solo lectura (acciones gateadas por `puedeEditable`; el
+  badge informativo "sin recepción" sí se muestra; verificado en E2E caso
+  [3]). **Backend**:
   `@PreAuthorize("hasAnyRole('ADMIN','FACTIBILIZADOR')")` en `POST
   /api/entregas`, `POST /{id}/recepcion` y
   `POST /detalle/{id}/confirmar-recepcion` (`solicitar-devolucion` sigue sin
   restricción: valida identidad). El flag `entregada` de `detallesDe()` es
   siempre `false` (backend `setProgramacionDetalle(null)`); el frontend
-  calcula pendientes por **estado de la OT**. API `/api/programaciones`
-  intacta (alimenta calendario y seeds del E2E). E2E: casos [3] y [4] cubren
+  calcula pendientes por **estado de la OT**. La API `/api/programaciones`
+  sigue existiendo en el backend pero **no la consume el frontend**;
+  `findDisponibles()` ya no filtra por `ProgramacionDetalle`, solo por estado
+  `PROGRAMADO` (estado inicial de toda OT nueva). Paginación compartida del
+  panel: `components/panel/PaginacionPanel.tsx`. E2E: casos [3] y [4] cubren
   el módulo; capturas con `fotos-entregas.cjs` (9 PNG).
 - **Módulo `ordenes-trabajo` construido** (CONSULTOR + FACTIBILIZADOR,
   "Completo"): `frontent/src/pages/OrdenesTrabajoPanel.tsx` (TSX + Tailwind,
   en `VISTAS_MODULO`; nombre evita el choque con la página admin
   `OrdenesTrabajo.jsx`, intacta). Vista lista + vista fichas (toggle
-  `data-vista`, patrón CentroTrabajo), 3 indicadores (total / programadas /
+  `data-vista`, patrón CentroTrabajo), 3 indicadores (total / por entregar /
   entregadas), toolbar (buscador Nº/tipo/descripción, filtros tipo y estado,
-  orden reciente/antigua/Nº, contador). Dos modales locales, **nunca
+  orden reciente/antigua/Nº, contador y **paginación** 15 por página). Dos
+  modales locales, **nunca
   apilados**: Detalle (banda tipo+estado, datos incl. **ubicación** SPEC §5.2,
   timeline `GET /{id}/historial`) y **Nueva OT** (`POST`, número manual único
   por tipo) — esta última **solo FACTIBILIZADOR** (`data-nueva-ot`); el
@@ -163,6 +167,24 @@
   E2E: casos [3] y [4] extienden el módulo; el caso [5] (móvil) clickea
   la tarjeta `devoluciones` (nth(2), placeholder) y verifica 8 círculos en
   el radial.
+- **Módulo `ejecucion` construido** (rol nuevo **INSTALADOR**, "siguiente paso
+  de factibilizador"): `frontent/src/pages/ProgramacionEjecucionPanel.tsx`
+  (TSX + Tailwind, en `VISTAS_MODULO`). Lista las OT en estado `DEVUELTO`
+  (`GET /api/ordenes-trabajo/devueltas`, orden por `fechaInicioEstado` ASC) y
+  las **programa para ejecución**: la OT vuelve a `PROGRAMADO` (estado
+  entregable de `findDisponibles()`), vía
+  `PUT /api/ordenes-trabajo/{id}/programar-ejecucion` con
+  `@PreAuthorize("hasAnyRole('ADMIN','INSTALADOR')")` y movimiento
+  `accion="PROGRAMACION_EJECUCION"` en `HistorialOT`. Vista lista + fichas
+  (`data-vista`), 3 indicadores (`data-indicador`: DEVUELTAS /
+  CON-MATERIALES / DEMORADAS ≥3 días), toolbar con buscador, orden,
+  contador y `PaginacionPanel` (15/pág.); dos modales locales **nunca
+  apilados** (`ModalState` = detalle | programar; el detalle abre el
+  formulario reemplazándose). Acción de fila solo icono con `title`.
+  Módulos del rol en `AuthController.modulosPorRol`:
+  `["ejecucion", "ordenes-trabajo"]` (el segundo es solo lectura). El rol se
+  crea de forma idempotente en `DataSeeder.crearRolSiFalta`. **No cambia
+  estados desde la app admin**: el permiso excluye a FACTIBILIZADOR.
 - **No son módulos**: notificaciones y perfil. La **campanita** del header
   abre un dropdown con las alertas (detalle en `Modal`); el **avatar** abre
   un menú con "Mi perfil" (Modal con tarjeta de datos) y "Cerrar sesión"

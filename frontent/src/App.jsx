@@ -17,6 +17,7 @@ import MisDevoluciones from './pages/MisDevoluciones'
 import MiHistorial from './pages/MiHistorial'
 import OrdenesTrabajoPanel from './pages/OrdenesTrabajoPanel'
 import EntregasPanel from './pages/EntregasPanel'
+import ProgramacionEjecucionPanel from './pages/ProgramacionEjecucionPanel'
 import ModuloProximamente from './components/panel/ModuloProximamente'
 
 const ROLES_POR_RUTA = {
@@ -37,6 +38,7 @@ const RUTAS_MODULO = [
   'mi-historial',
   'ordenes-trabajo',
   'entregas',
+  'ejecucion',
   'devoluciones',
   'seguimiento',
   'historial',
@@ -51,6 +53,7 @@ const VISTAS_MODULO = {
   'mi-historial': MiHistorial,
   'ordenes-trabajo': OrdenesTrabajoPanel,
   entregas: EntregasPanel,
+  ejecucion: ProgramacionEjecucionPanel,
 }
 
 function RequireAuth({ roles, children }) {

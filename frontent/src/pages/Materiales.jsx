@@ -1,5 +1,7 @@
 import { useEffect, useState } from 'react'
+import { Pencil, Power, PowerOff } from 'lucide-react'
 import { api } from '../api/api'
+import { invalidar } from '../api/catalogos'
 import Modal from '../components/Modal'
 
 export default function Materiales() {
@@ -39,6 +41,7 @@ export default function Materiales() {
       setEditando(null)
       setNombre('')
       setUnidadMedida('')
+      invalidar('/materiales')
       cargar()
     } catch (err) {
       setError(err.message)
@@ -53,6 +56,7 @@ export default function Materiales() {
       setMensajeOk(
         `Material ${material.nombre} ${material.activo ? 'desactivado' : 'activado'}`
       )
+      invalidar('/materiales')
       cargar()
     } catch (err) {
       setError(err.message)
@@ -96,6 +100,7 @@ export default function Materiales() {
         {materiales.length === 0 ? (
           <div className="vacio">No hay materiales registrados</div>
         ) : (
+          <div className="tabla-scroll">
           <table>
             <thead>
               <tr>
@@ -118,24 +123,32 @@ export default function Materiales() {
                     </span>
                   </td>
                   <td data-label="">
-                    <button
-                      className="btn btn-secundario btn-chico"
-                      style={{ marginRight: 6 }}
-                      onClick={() => abrirEdicion(m)}
-                    >
-                      Editar
-                    </button>
-                    <button
-                      className="btn btn-secundario btn-chico"
-                      onClick={() => alternarActivo(m)}
-                    >
-                      {m.activo ? 'Desactivar' : 'Activar'}
-                    </button>
+                    <div className="acciones-fila">
+                      <button
+                        type="button"
+                        className="btn-icono"
+                        title="Editar"
+                        aria-label="Editar"
+                        onClick={() => abrirEdicion(m)}
+                      >
+                        <Pencil size={16} />
+                      </button>
+                      <button
+                        type="button"
+                        className={`btn-icono ${m.activo ? 'btn-icono-peligro' : ''}`}
+                        title={m.activo ? 'Desactivar' : 'Activar'}
+                        aria-label={m.activo ? 'Desactivar' : 'Activar'}
+                        onClick={() => alternarActivo(m)}
+                      >
+                        {m.activo ? <PowerOff size={16} /> : <Power size={16} />}
+                      </button>
+                    </div>
                   </td>
                 </tr>
               ))}
             </tbody>
           </table>
+          </div>
         )}
       </div>
 

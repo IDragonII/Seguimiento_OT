@@ -1,5 +1,7 @@
 import { useEffect, useState } from 'react'
+import { Check, X } from 'lucide-react'
 import { api } from '../api/api'
+import { invalidarAlertas, obtenerAlertas } from '../api/alertasCache'
 
 function badgeAlerta(estado) {
   const clase =
@@ -17,7 +19,7 @@ export default function Alertas() {
 
   function cargar() {
     api.get('/alertas').then(setTodas).catch((err) => setError(err.message))
-    api.get('/alertas/mis-alertas').then(setMias).catch(() => setMias([]))
+    obtenerAlertas().then(setMias).catch(() => setMias([]))
   }
 
   useEffect(() => {
@@ -30,6 +32,7 @@ export default function Alertas() {
     try {
       await api.patch(`/alertas/${id}/${tipo}`, { observacion: `${tipo} desde panel` })
       setMensajeOk(tipo === 'atender' ? 'Alerta atendida' : 'Alerta descartada')
+      invalidarAlertas()
       cargar()
     } catch (err) {
       setError(err.message)
@@ -49,6 +52,7 @@ export default function Alertas() {
         {mias.length === 0 ? (
           <div className="vacio">No tienes alertas pendientes</div>
         ) : (
+          <div className="tabla-scroll">
           <table>
             <thead>
               <tr>
@@ -71,15 +75,24 @@ export default function Alertas() {
                         {a?.diasHabilesTranscurridos} / {a?.diasHabilesMaximos}
                       </td>
                       <td data-label="">
-                        <div className="acciones">
-                          <button className="btn btn-chico" onClick={() => accion(a.id, 'atender')}>
-                            Atender
+                        <div className="acciones-fila">
+                          <button
+                            type="button"
+                            className="btn-icono"
+                            title="Atender"
+                            aria-label="Atender"
+                            onClick={() => accion(a.id, 'atender')}
+                          >
+                            <Check size={16} />
                           </button>
                           <button
-                            className="btn btn-secundario btn-chico"
+                            type="button"
+                            className="btn-icono btn-icono-peligro"
+                            title="Descartar"
+                            aria-label="Descartar"
                             onClick={() => accion(a.id, 'descartar')}
                           >
-                            Descartar
+                            <X size={16} />
                           </button>
                         </div>
                       </td>
@@ -88,6 +101,7 @@ export default function Alertas() {
                 })}
             </tbody>
           </table>
+          </div>
         )}
       </div>
 
@@ -96,6 +110,7 @@ export default function Alertas() {
         {todas.length === 0 ? (
           <div className="vacio">No hay alertas registradas</div>
         ) : (
+          <div className="tabla-scroll">
           <table>
             <thead>
               <tr>
@@ -119,15 +134,24 @@ export default function Alertas() {
                   <td data-label="Estado">{badgeAlerta(a.estadoAlerta)}</td>
                   <td data-label="">
                     {a.estadoAlerta === 'PENDIENTE' && (
-                      <div className="acciones">
-                        <button className="btn btn-chico" onClick={() => accion(a.id, 'atender')}>
-                          Atender
+                      <div className="acciones-fila">
+                        <button
+                          type="button"
+                          className="btn-icono"
+                          title="Atender"
+                          aria-label="Atender"
+                          onClick={() => accion(a.id, 'atender')}
+                        >
+                          <Check size={16} />
                         </button>
                         <button
-                          className="btn btn-secundario btn-chico"
+                          type="button"
+                          className="btn-icono btn-icono-peligro"
+                          title="Descartar"
+                          aria-label="Descartar"
                           onClick={() => accion(a.id, 'descartar')}
                         >
-                          Descartar
+                          <X size={16} />
                         </button>
                       </div>
                     )}
@@ -136,6 +160,7 @@ export default function Alertas() {
               ))}
             </tbody>
           </table>
+          </div>
         )}
       </div>
     </>

@@ -1,6 +1,9 @@
 import { useEffect, useState } from 'react'
 import { api } from '../api/api'
+import { obtener } from '../api/catalogos'
+import { History, Package, Pencil } from 'lucide-react'
 import Modal from '../components/Modal'
+import Paginacion from '../components/panel/Paginacion'
 
 export default function OrdenesTrabajo() {
   const usuario = api.getUsuario()
@@ -16,6 +19,8 @@ export default function OrdenesTrabajo() {
   const [filtroEstado, setFiltroEstado] = useState('')
   const [filtroCategoria, setFiltroCategoria] = useState('')
   const [historial, setHistorial] = useState(null)
+  const [page, setPage] = useState(0)
+  const size = 15
 
   const [materialesEdit, setMaterialesEdit] = useState(null)
   const [matFilas, setMatFilas] = useState([])
@@ -52,12 +57,14 @@ export default function OrdenesTrabajo() {
 
   useEffect(() => {
     cargar()
-    api.get('/categorias').then(setCategorias).catch(() => setCategorias([]))
-    api.get('/materiales').then(setCatalogoMateriales).catch(() => setCatalogoMateriales([]))
+    obtener('/categorias').then(setCategorias).catch(() => setCategorias([]))
+    obtener('/materiales').then(setCatalogoMateriales).catch(() => setCatalogoMateriales([]))
     if (puedeCrear) {
-      api.get('/tipos-ot').then(setTipos).catch(() => setTipos([]))
+      obtener('/tipos-ot').then(setTipos).catch(() => setTipos([]))
     }
   }, [puedeCrear])
+
+
 
   async function crear(e) {
     e.preventDefault()
@@ -196,6 +203,8 @@ export default function OrdenesTrabajo() {
     return coincideBusqueda && coincideEstado && coincideCategoria
   })
 
+  const pagina = filtradas.slice(page * size, page * size + size)
+
   return (
     <>
       <h1 className="page-title">Órdenes de trabajo</h1>
@@ -215,10 +224,19 @@ export default function OrdenesTrabajo() {
             <input
               placeholder="Buscar por número, apellidos, categoría…"
               value={busqueda}
-              onChange={(e) => setBusqueda(e.target.value)}
+              onChange={(e) => {
+                setBusqueda(e.target.value)
+                setPage(0)
+              }}
               style={{ minWidth: 260 }}
             />
-            <select value={filtroEstado} onChange={(e) => setFiltroEstado(e.target.value)}>
+            <select
+              value={filtroEstado}
+              onChange={(e) => {
+                setFiltroEstado(e.target.value)
+                setPage(0)
+              }}
+            >
               <option value="">Todos los estados</option>
               <option value="PROGRAMADO">PROGRAMADO</option>
               <option value="ENTREGADO">ENTREGADO</option>
@@ -227,7 +245,10 @@ export default function OrdenesTrabajo() {
             </select>
             <select
               value={filtroCategoria}
-              onChange={(e) => setFiltroCategoria(e.target.value)}
+              onChange={(e) => {
+                setFiltroCategoria(e.target.value)
+                setPage(0)
+              }}
               data-filtro-categoria
             >
               <option value="">Todas las categorías</option>
@@ -241,11 +262,19 @@ export default function OrdenesTrabajo() {
           <span style={{ color: 'var(--muted)', fontSize: 13 }}>
             {filtradas.length} resultado(s)
           </span>
+          <Paginacion
+            page={page}
+            setPage={setPage}
+            size={size}
+            total={filtradas.length}
+          />
+
         </div>
 
         {filtradas.length === 0 ? (
           <div className="vacio">No hay órdenes de trabajo</div>
         ) : (
+          <div className="tabla-scroll">
           <table>
             <thead>
               <tr>
@@ -260,7 +289,7 @@ export default function OrdenesTrabajo() {
               </tr>
             </thead>
             <tbody>
-              {filtradas.map((o) => (
+              {pagina.map((o) => (
                 <tr key={o.id}>
                   <td data-label="#">#{o.numeroOT}</td>
                   <td data-label="Tipo">{o.tipoOT?.nombre}</td>
@@ -274,35 +303,45 @@ export default function OrdenesTrabajo() {
                   <td data-label="Ubicación">{o.ubicacion || '—'}</td>
                   <td data-label="Registro">{new Date(o.fechaRegistro).toLocaleDateString()}</td>
                   <td data-label="">
-                    {puedeEditar && (
-                      <>
-                        <button
-                          className="btn btn-secundario btn-chico"
-                          style={{ marginRight: 6 }}
-                          onClick={() => abrirMateriales(o)}
-                        >
-                          Materiales
-                        </button>
-                        <button
-                          className="btn btn-secundario btn-chico"
-                          style={{ marginRight: 6 }}
-                          onClick={() => abrirEdicion(o)}
-                        >
-                          Editar
-                        </button>
-                      </>
-                    )}
-                    <button
-                      className="btn btn-secundario btn-chico"
-                      onClick={() => verHistorial(o)}
-                    >
-                      Historial
-                    </button>
+                    <div className="acciones-fila">
+                      {puedeEditar && (
+                        <>
+                          <button
+                            type="button"
+                            className="btn-icono"
+                            title="Materiales"
+                            aria-label="Materiales"
+                            onClick={() => abrirMateriales(o)}
+                          >
+                            <Package size={16} />
+                          </button>
+                          <button
+                            type="button"
+                            className="btn-icono"
+                            title="Editar"
+                            aria-label="Editar"
+                            onClick={() => abrirEdicion(o)}
+                          >
+                            <Pencil size={16} />
+                          </button>
+                        </>
+                      )}
+                      <button
+                        type="button"
+                        className="btn-icono"
+                        title="Historial"
+                        aria-label="Historial"
+                        onClick={() => verHistorial(o)}
+                      >
+                        <History size={16} />
+                      </button>
+                    </div>
                   </td>
                 </tr>
               ))}
             </tbody>
           </table>
+          </div>
         )}
       </div>
 

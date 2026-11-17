@@ -13,6 +13,7 @@ import {
 import { api } from '../api/api'
 import Modal from '../components/Modal'
 import { ESTADOS_OT, coloresDe } from '../components/panel/estadosOT'
+import PaginacionPanel from '../components/panel/PaginacionPanel'
 
 interface UsuarioRef {
   id: number
@@ -76,6 +77,7 @@ const ACCIONES: Record<string, string> = {
   ENTREGA: 'Entrega al técnico',
   SOLICITUD_DEVOLUCION: 'Solicitud de devolución',
   CONFIRMACION_RECEPCION: 'Confirmación de recepción',
+  PROGRAMACION_EJECUCION: 'Programación para ejecución',
   ALERTA_VENCIMIENTO: 'Alerta de vencimiento',
 }
 
@@ -223,19 +225,21 @@ function ModalDetalle({
                   type="button"
                   data-ot-materiales
                   onClick={onMateriales}
-                  className="inline-flex items-center gap-1 rounded-lg border border-[#E4E8EE] bg-white px-2.5 py-1.5 text-xs font-semibold text-[#18283E] transition hover:border-[#3478C7] hover:text-[#3478C7] focus:outline-none focus:ring-2 focus:ring-[#3478C7]/40"
+                  title="Materiales"
+                  aria-label="Materiales"
+                  className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-[#E4E8EE] bg-white text-[#55657A] transition hover:border-[#3478C7] hover:text-[#3478C7] focus:outline-none focus:ring-2 focus:ring-[#3478C7]/40"
                 >
-                  <PackageCheck size={13} aria-hidden="true" />
-                  Materiales
+                  <PackageCheck size={15} aria-hidden="true" />
                 </button>
                 <button
                   type="button"
                   data-ot-editar
                   onClick={onEditar}
-                  className="inline-flex items-center gap-1 rounded-lg border border-[#E4E8EE] bg-white px-2.5 py-1.5 text-xs font-semibold text-[#18283E] transition hover:border-[#3478C7] hover:text-[#3478C7] focus:outline-none focus:ring-2 focus:ring-[#3478C7]/40"
+                  title="Editar"
+                  aria-label="Editar"
+                  className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-[#E4E8EE] bg-white text-[#55657A] transition hover:border-[#3478C7] hover:text-[#3478C7] focus:outline-none focus:ring-2 focus:ring-[#3478C7]/40"
                 >
-                  <Pencil size={13} aria-hidden="true" />
-                  Editar
+                  <Pencil size={15} aria-hidden="true" />
                 </button>
               </>
             )}
@@ -863,6 +867,7 @@ export default function OrdenesTrabajoPanel() {
   const [filtroEstado, setFiltroEstado] = useState('')
   const [filtroCategoria, setFiltroCategoria] = useState('')
   const [orden, setOrden] = useState('reciente')
+  const [page, setPage] = useState(0)
   const [modal, setModal] = useState<ModalState>(null)
 
   async function recargar() {
@@ -912,6 +917,14 @@ export default function OrdenesTrabajoPanel() {
     return orden === 'antigua' ? fa.localeCompare(fb) : fb.localeCompare(fa)
   })
 
+  const POR_PAGINA = 15
+  const totalPaginas = Math.max(1, Math.ceil(visibles.length / POR_PAGINA))
+  const paginaActual = Math.min(page, totalPaginas - 1)
+  const enPagina = visibles.slice(
+    paginaActual * POR_PAGINA,
+    paginaActual * POR_PAGINA + POR_PAGINA
+  )
+
   const vaciaTotal = lista.length === 0
   const vaciaFiltrada = !vaciaTotal && visibles.length === 0
   const otModal =
@@ -944,7 +957,7 @@ export default function OrdenesTrabajoPanel() {
               id="PROGRAMADAS"
               icono={CalendarDays}
               valor={totalProgramadas}
-              etiqueta="Programadas"
+              etiqueta="Por entregar"
               color="#718096"
             />
             <Indicador
@@ -1012,7 +1025,10 @@ export default function OrdenesTrabajoPanel() {
                 data-buscador
                 type="search"
                 value={busqueda}
-                onChange={(e) => setBusqueda(e.target.value)}
+                onChange={(e) => {
+                  setBusqueda(e.target.value)
+                  setPage(0)
+                }}
                 placeholder="Buscar por Nº, apellidos o categoría…"
                 className="w-full rounded-lg border border-[#E4E8EE] py-2 pl-9 pr-3 text-sm text-[#18283E] outline-none focus:border-[#3478C7] focus:ring-2 focus:ring-[#3478C7]/25"
               />
@@ -1021,7 +1037,10 @@ export default function OrdenesTrabajoPanel() {
             <select
               data-filtro-tipo
               value={filtroTipo}
-              onChange={(e) => setFiltroTipo(e.target.value)}
+              onChange={(e) => {
+                setFiltroTipo(e.target.value)
+                setPage(0)
+              }}
               className="rounded-lg border border-[#E4E8EE] bg-white px-2.5 py-2 text-sm text-[#18283E] outline-none focus:border-[#3478C7]"
             >
               <option value="">Todos los tipos</option>
@@ -1035,7 +1054,10 @@ export default function OrdenesTrabajoPanel() {
             <select
               data-filtro-categoria
               value={filtroCategoria}
-              onChange={(e) => setFiltroCategoria(e.target.value)}
+              onChange={(e) => {
+                setFiltroCategoria(e.target.value)
+                setPage(0)
+              }}
               className="rounded-lg border border-[#E4E8EE] bg-white px-2.5 py-2 text-sm text-[#18283E] outline-none focus:border-[#3478C7]"
             >
               <option value="">Todas las categorías</option>
@@ -1049,7 +1071,10 @@ export default function OrdenesTrabajoPanel() {
             <select
               data-filtro-estado
               value={filtroEstado}
-              onChange={(e) => setFiltroEstado(e.target.value)}
+              onChange={(e) => {
+                setFiltroEstado(e.target.value)
+                setPage(0)
+              }}
               className="rounded-lg border border-[#E4E8EE] bg-white px-2.5 py-2 text-sm text-[#18283E] outline-none focus:border-[#3478C7]"
             >
               <option value="">Todos los estados</option>
@@ -1063,7 +1088,10 @@ export default function OrdenesTrabajoPanel() {
             <select
               data-orden
               value={orden}
-              onChange={(e) => setOrden(e.target.value)}
+              onChange={(e) => {
+                setOrden(e.target.value)
+                setPage(0)
+              }}
               className="rounded-lg border border-[#E4E8EE] bg-white px-2.5 py-2 text-sm text-[#18283E] outline-none focus:border-[#3478C7]"
             >
               <option value="reciente">Más reciente</option>
@@ -1074,6 +1102,13 @@ export default function OrdenesTrabajoPanel() {
             <span data-resultados className="text-xs font-medium text-[#718096]">
               {visibles.length} resultado{visibles.length === 1 ? '' : 's'}
             </span>
+
+            <PaginacionPanel
+              page={paginaActual}
+              size={POR_PAGINA}
+              total={visibles.length}
+              setPage={setPage}
+            />
 
             {puedeCrear && (
               <button
@@ -1112,8 +1147,8 @@ export default function OrdenesTrabajoPanel() {
             )}
 
             {visibles.length > 0 && vista === 'lista' && (
-              <div className="overflow-hidden rounded-xl border border-[#E4E8EE] bg-white">
-                {visibles.map((o) => {
+              <div className="max-h-[calc(100vh-300px)] overflow-y-auto rounded-xl border border-[#E4E8EE] bg-white">
+                {enPagina.map((o) => {
                   const estado = o.estado?.nombre ?? ''
                   const col = coloresDe(estado)
                   return (
@@ -1156,8 +1191,8 @@ export default function OrdenesTrabajoPanel() {
             )}
 
             {visibles.length > 0 && vista === 'fichas' && (
-              <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
-                {visibles.map((o) => {
+              <div className="grid max-h-[calc(100vh-300px)] gap-3 overflow-y-auto pr-1 sm:grid-cols-2 xl:grid-cols-3">
+                {enPagina.map((o) => {
                   const estado = o.estado?.nombre ?? ''
                   const col = coloresDe(estado)
                   return (

@@ -24,6 +24,7 @@ CREATE TABLE roles (
 INSERT INTO roles (nombre, descripcion) VALUES
 ('ADMIN', 'Administrador del sistema'),
 ('FACTIBILIZADOR', 'Registra y programa órdenes de trabajo'),
+('INSTALADOR', 'Programa para ejecución las OT devueltas'),
 ('TECNICO', 'Recibe y devuelve órdenes de trabajo'),
 ('CONSULTOR', 'Consulta órdenes de trabajo');
 
@@ -171,6 +172,12 @@ ON ordenes_trabajo(tipo_ot_id, numero_ot);
 CREATE INDEX idx_ordenes_fecha_estado
 ON ordenes_trabajo(fecha_inicio_estado);
 
+CREATE INDEX idx_ordenes_fecha_registro
+ON ordenes_trabajo(fecha_registro DESC);
+
+CREATE INDEX idx_ordenes_categoria
+ON ordenes_trabajo(categoria_id);
+
 CREATE TABLE orden_materiales (
     id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
 
@@ -317,6 +324,13 @@ ON entrega_detalle(fecha_devolucion);
 CREATE INDEX idx_entrega_ot
 ON entrega_detalle(orden_trabajo_id);
 
+CREATE INDEX idx_entrega_tecnico_devolucion
+ON entrega_detalle(tecnico_id, fecha_devolucion);
+
+CREATE INDEX idx_entrega_recibido
+ON entrega_detalle(recibido_por)
+WHERE recibido_por IS NULL;
+
 -- =====================================================
 -- 10. HISTORIAL DE OT
 -- =====================================================
@@ -355,6 +369,9 @@ ON historial_ot(orden_trabajo_id, fecha DESC);
 CREATE INDEX idx_historial_usuario
 ON historial_ot(usuario_id);
 
+CREATE INDEX idx_historial_fecha
+ON historial_ot(fecha DESC);
+
 -- =====================================================
 -- 11. CONFIGURACION DE TIEMPOS POR ESTADO
 -- =====================================================
@@ -375,7 +392,7 @@ CREATE TABLE configuracion_tiempos_ot (
         UNIQUE(estado_id),
 
     CONSTRAINT chk_dias_maximos
-        CHECK(dias_habiles_maximos = 0)
+        CHECK(dias_habiles_maximos > 0)
 );
 
 -- Los tiempos se configurarán desde el sistema.
@@ -441,8 +458,8 @@ CREATE TABLE alertas_ot (
 
     CONSTRAINT chk_dias_alerta
         CHECK(
-            dias_habiles_transcurridos = 0
-            AND dias_habiles_maximos = 0
+            dias_habiles_transcurridos >= 0
+            AND dias_habiles_maximos > 0
         )
 );
 

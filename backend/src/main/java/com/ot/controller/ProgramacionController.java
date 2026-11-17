@@ -7,6 +7,7 @@ import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDate;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -35,20 +36,47 @@ public class ProgramacionController {
 
     @GetMapping
     public ResponseEntity<List<Map<String, Object>>> getAll() {
-        List<Map<String, Object>> resultado = programacionRepository
-            .findAllByOrderByFechaProgramacionDesc()
-            .stream()
-            .map(p -> {
-                Map<String, Object> item = new HashMap<>();
-                item.put("id", p.getId());
-                item.put("fechaProgramacion", p.getFechaProgramacion());
-                item.put("programadoPor", p.getProgramadoPor());
-                item.put("observacion", p.getObservacion());
-                item.put("fechaCreacion", p.getFechaCreacion());
-                item.put("detalles", detallesDe(p.getId()));
-                return item;
-            })
+        List<Programacion> programaciones = programacionRepository.findAllByOrderByFechaProgramacionDesc();
+
+        // Batch: 1 query para todos los detalles de todas las programaciones
+        // (antes: 1 findByProgramacionId + 1 exists por cada detalle = 1+N+ΣM).
+        Map<Long, List<ProgramacionDetalle>> detsPorProg = programaciones.isEmpty()
+            ? Map.of()
+            : detalleRepository.findByProgramacionIdIn(
+                programaciones.stream().map(Programacion::getId).toList()).stream()
+                .collect(java.util.stream.Collectors.groupingBy(d -> d.getProgramacion().getId()));
+
+        List<Long> detIds = detsPorProg.values().stream()
+            .flatMap(List::stream)
+            .map(ProgramacionDetalle::getId)
             .toList();
+        java.util.Set<Long> entregados = detIds.isEmpty()
+            ? java.util.Set.of()
+            : new java.util.HashSet<>(entregaDetalleRepository
+                .findProgramacionDetalleIdsConEntrega(detIds));
+
+        List<Map<String, Object>> resultado = new ArrayList<>();
+        for (Programacion p : programaciones) {
+            Map<String, Object> item = new HashMap<>();
+            item.put("id", p.getId());
+            item.put("fechaProgramacion", p.getFechaProgramacion());
+            item.put("programadoPor", p.getProgramadoPor());
+            item.put("observacion", p.getObservacion());
+            item.put("fechaCreacion", p.getFechaCreacion());
+
+            List<Map<String, Object>> dets = new ArrayList<>();
+            for (ProgramacionDetalle d : detsPorProg.getOrDefault(p.getId(), List.of())) {
+                Map<String, Object> det = new HashMap<>();
+                det.put("id", d.getId());
+                det.put("ordenTrabajo", d.getOrdenTrabajo());
+                det.put("observacion", d.getObservacion());
+                det.put("fechaCreacion", d.getFechaCreacion());
+                det.put("entregada", entregados.contains(d.getId()));
+                dets.add(det);
+            }
+            item.put("detalles", dets);
+            resultado.add(item);
+        }
         return ResponseEntity.ok(resultado);
     }
 

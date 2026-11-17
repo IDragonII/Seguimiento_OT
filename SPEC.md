@@ -330,7 +330,7 @@ Los movimientos anteriores no deberán sobrescribirse.
 
 ## 6. Roles del sistema
 
-Existirán cuatro roles iniciales.
+Existirán cinco roles iniciales.
 
 ### ADMIN
 
@@ -366,6 +366,21 @@ Puede:
 - Consultar alertas.
 
 No puede administrar usuarios ni configuraciones generales.
+
+### INSTALADOR
+
+Es el paso siguiente al FACTIBILIZADOR: toma las OT que el técnico devolvió
+y las vuelve a poner en ejecución.
+
+Puede:
+
+- Consultar las OT en estado `DEVUELTO`.
+- Programar para ejecución esas OT (pasan de `DEVUELTO` a `PROGRAMADO`, con
+  movimiento en el historial y observación opcional).
+- Consultar las órdenes de trabajo y sus historiales.
+
+No puede entregar OT, recibir devoluciones, registrar OT ni administrar
+usuarios o configuraciones.
 
 ### TECNICO
 

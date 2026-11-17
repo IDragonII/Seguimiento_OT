@@ -9,6 +9,7 @@ import {
   Undo2,
 } from 'lucide-react'
 import { api } from '../api/api'
+import { obtenerAlertas } from '../api/alertasCache'
 import Modal from '../components/Modal'
 import { ESTADOS_OT, coloresDe } from '../components/panel/estadosOT'
 
@@ -45,7 +46,6 @@ interface DetalleMisOT {
   fechaDevolucion?: string | null
   observacion?: string | null
   fechaCreacion?: string
-  fechaProgramacion?: string | null
 }
 
 interface TipoOT {
@@ -77,6 +77,7 @@ const ACCIONES: Record<string, string> = {
   ENTREGA: 'Entrega al técnico',
   SOLICITUD_DEVOLUCION: 'Solicitud de devolución',
   CONFIRMACION_RECEPCION: 'Confirmación de recepción',
+  PROGRAMACION_EJECUCION: 'Programación para ejecución',
   ALERTA_VENCIMIENTO: 'Alerta de vencimiento',
 }
 
@@ -87,7 +88,6 @@ function categoriaDe(d: DetalleMisOT): Categoria {
 }
 
 function anclaDe(d: DetalleMisOT): string | null {
-  if (d.fechaProgramacion) return d.fechaProgramacion.slice(0, 10)
   const fecha = d.entrega?.fechaEntrega
   if (fecha) return fecha.slice(0, 10)
   return null
@@ -369,12 +369,6 @@ function Expediente({
             }
           />
           <Fila label="Fecha de registro" valor={fechaCorta(ot?.fechaRegistro)} />
-          <Fila
-            label="Fecha programada"
-            valor={
-              detalle.fechaProgramacion ? fechaCorta(detalle.fechaProgramacion) : 'Sin programar'
-            }
-          />
           <Fila label="Fecha de entrega" valor={fechaHora(detalle.entrega?.fechaEntrega)} />
           <Fila label="Técnico responsable" valor={nombreDe(detalle.tecnico)} />
           <Fila label="Ubicación actual" valor={ot?.ubicacion} />
@@ -498,8 +492,7 @@ export default function CentroTrabajo() {
       .get('/tipos-ot')
       .then((lista: TipoOT[]) => setTipos(lista))
       .catch(() => setTipos([]))
-    api
-      .get('/alertas/mis-alertas')
+    obtenerAlertas()
       .then((lista: { alerta?: { ordenTrabajo?: { id?: number } } }[]) =>
         setAlertasOt(
           new Set(
@@ -541,14 +534,6 @@ export default function CentroTrabajo() {
         return (a.ordenTrabajo?.numeroOT ?? 0) - (b.ordenTrabajo?.numeroOT ?? 0)
       case 'num-desc':
         return (b.ordenTrabajo?.numeroOT ?? 0) - (a.ordenTrabajo?.numeroOT ?? 0)
-      case 'programacion': {
-        const fa = a.fechaProgramacion ?? ''
-        const fb = b.fechaProgramacion ?? ''
-        if (!fa && !fb) return 0
-        if (!fa) return 1
-        if (!fb) return -1
-        return fa.localeCompare(fb)
-      }
       case 'tiempo':
         return ordenDe(a).localeCompare(ordenDe(b))
       default:
@@ -744,7 +729,6 @@ export default function CentroTrabajo() {
                 <option value="antiguo">Más antigua</option>
                 <option value="num-asc">Nº de OT ↑</option>
                 <option value="num-desc">Nº de OT ↓</option>
-                <option value="programacion">Fecha de programación</option>
                 <option value="tiempo">Mayor tiempo transcurrido</option>
               </select>
 
@@ -834,18 +818,10 @@ export default function CentroTrabajo() {
                         {ot?.ubicacion || '—'}
                       </div>
                       <div className="text-right text-[11px] leading-relaxed text-[#718096]">
-                        <div>
-                          Prog:{' '}
-                          <span className="font-medium text-[#55657A]">
-                            {fechaCorta(d.fechaProgramacion) || '—'}
-                          </span>
-                        </div>
-                        <div>
-                          Entrega:{' '}
-                          <span className="font-medium text-[#55657A]">
-                            {fechaCorta(d.entrega?.fechaEntrega) || '—'}
-                          </span>
-                        </div>
+                        Entrega:{' '}
+                        <span className="font-medium text-[#55657A]">
+                          {fechaCorta(d.entrega?.fechaEntrega) || '—'}
+                        </span>
                       </div>
                       <div className="flex w-[110px] shrink-0 items-center justify-end gap-2 text-xs font-medium text-[#718096]">
                         <PuntoAtencion visible={alertasOt.has(ot?.id ?? -1)} />
@@ -902,18 +878,10 @@ export default function CentroTrabajo() {
                           <span className="font-medium text-[#718096]">Ubicación: </span>
                           {ot?.ubicacion || '—'}
                         </div>
-                        <div className="flex justify-between gap-2">
-                          <span>
-                            Prog:{' '}
-                            <span className="font-medium">
-                              {fechaCorta(d.fechaProgramacion) || '—'}
-                            </span>
-                          </span>
-                          <span>
-                            Entrega:{' '}
-                            <span className="font-medium">
-                              {fechaCorta(d.entrega?.fechaEntrega) || '—'}
-                            </span>
+                        <div>
+                          Entrega:{' '}
+                          <span className="font-medium">
+                            {fechaCorta(d.entrega?.fechaEntrega) || '—'}
                           </span>
                         </div>
                         <div className="pt-1 text-[#718096]">

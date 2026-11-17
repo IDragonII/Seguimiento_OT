@@ -11,6 +11,7 @@ import java.util.List;
 @Repository
 public interface ProgramacionDetalleRepository extends JpaRepository<ProgramacionDetalle, Long> {
     List<ProgramacionDetalle> findByProgramacionId(Long programacionId);
+    List<ProgramacionDetalle> findByProgramacionIdIn(List<Long> programacionIds);
     boolean existsByProgramacionIdAndOrdenTrabajoId(Long programacionId, Long ordenTrabajoId);
 
     @Query("SELECT pd.ordenTrabajo.id, MIN(p.fechaProgramacion) FROM ProgramacionDetalle pd "

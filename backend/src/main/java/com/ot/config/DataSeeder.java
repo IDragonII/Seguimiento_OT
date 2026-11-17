@@ -49,6 +49,7 @@ public class DataSeeder implements ApplicationRunner {
             Map.of(
                 "ADMIN", "Administrador del sistema",
                 "FACTIBILIZADOR", "Registra y programa órdenes de trabajo",
+                "INSTALADOR", "Programa para ejecución las OT devueltas",
                 "TECNICO", "Recibe y devuelve órdenes de trabajo",
                 "CONSULTOR", "Consulta órdenes de trabajo"
             ).forEach((nombre, descripcion) -> {
@@ -59,6 +60,9 @@ public class DataSeeder implements ApplicationRunner {
             });
             log.info("Roles iniciales creados");
         }
+
+        // Roles nuevos sobre una BD ya sembrada (idempotente).
+        crearRolSiFalta("INSTALADOR", "Programa para ejecución las OT devueltas");
 
         if (estadoOTRepository.count() == 0) {
             List.of(
@@ -107,9 +111,22 @@ public class DataSeeder implements ApplicationRunner {
             admin.setEmail(CredencialesSemilla.EMAIL_ADMIN);
             admin.setPasswordHash(passwordEncoder.encode(CredencialesSemilla.PASSWORD_ADMIN));
             admin.setActivo(true);
+            admin.setDebeCambiarCredenciales(true);
             usuarioRepository.save(admin);
             log.info("Usuario administrador inicial creado ({})", CredencialesSemilla.EMAIL_ADMIN);
         }
+
+        // Backfill idempotente: si el admin conserva el hash de la semilla pero
+        // el flag está apagado, se vuelve a exigir el cambio de credenciales.
+        usuarioRepository.findByEmail(CredencialesSemilla.EMAIL_ADMIN).ifPresent(admin -> {
+            boolean conservaSemilla = passwordEncoder.matches(
+                CredencialesSemilla.PASSWORD_ADMIN, admin.getPasswordHash());
+            if (conservaSemilla && !Boolean.TRUE.equals(admin.getDebeCambiarCredenciales())) {
+                admin.setDebeCambiarCredenciales(true);
+                usuarioRepository.save(admin);
+                log.info("Backfill: admin con contraseña semilla; se exige cambio de credenciales");
+            }
+        });
     }
 
     private void renombrarTipoSiFalta(String nombreViejo, String nombreNuevo, String descripcion) {
@@ -130,6 +147,16 @@ public class DataSeeder implements ApplicationRunner {
             tipo.setDescripcion(descripcion);
             tipoOTRepository.save(tipo);
             log.info("Tipo OT '{}' creado", nombre);
+        }
+    }
+
+    private void crearRolSiFalta(String nombre, String descripcion) {
+        if (rolRepository.findByNombre(nombre).isEmpty()) {
+            Rol rol = new Rol();
+            rol.setNombre(nombre);
+            rol.setDescripcion(descripcion);
+            rolRepository.save(rol);
+            log.info("Rol '{}' creado", nombre);
         }
     }
 

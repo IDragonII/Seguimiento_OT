@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { Bell, LogOut, User } from 'lucide-react'
 import { api } from '../../api/api'
+import { obtenerAlertas } from '../../api/alertasCache'
 import Modal from '../Modal'
 
 function iniciales(usuario) {
@@ -24,8 +25,7 @@ export default function ControlesPanel({ variante = 'panel' }) {
   const raizRef = useRef(null)
 
   useEffect(() => {
-    api
-      .get('/alertas/mis-alertas')
+    obtenerAlertas()
       .then(setAlertas)
       .catch(() => setAlertas([]))
   }, [])

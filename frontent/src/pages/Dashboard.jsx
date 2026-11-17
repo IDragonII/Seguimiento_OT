@@ -238,6 +238,7 @@ export default function Dashboard() {
           {pendientesTop.length === 0 ? (
             <div className="vacio">No hay alertas pendientes</div>
           ) : (
+            <div className="tabla-scroll">
             <table>
               <thead>
                 <tr>
@@ -260,6 +261,7 @@ export default function Dashboard() {
                 ))}
               </tbody>
             </table>
+            </div>
           )}
         </div>
       </div>
@@ -269,6 +271,7 @@ export default function Dashboard() {
         {ordenes.length === 0 ? (
           <div className="vacio">Aún no hay órdenes registradas</div>
         ) : (
+          <div className="tabla-scroll">
           <table>
             <thead>
               <tr>
@@ -299,6 +302,7 @@ export default function Dashboard() {
                 ))}
             </tbody>
           </table>
+          </div>
         )}
       </div>
     </>

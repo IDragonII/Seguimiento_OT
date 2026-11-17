@@ -8,6 +8,7 @@ import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetails;
@@ -26,11 +27,15 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
     private static final Logger logger = Logger.getLogger(JwtAuthenticationFilter.class.getName());
     private final UserDetailsService userDetailsService;
-    private final String jwtSecret = "OT2026-Sistema-Ordenes-Trabajo-Clave-Secreta-MuySegura";
-    private final long jwtExpiration = 86400000; // 24 hours
+    private final String jwtSecret;
+    private final long jwtExpiration;
 
-    public JwtAuthenticationFilter(UserDetailsService userDetailsService) {
+    public JwtAuthenticationFilter(UserDetailsService userDetailsService,
+                                   @Value("${jwt.secret}") String jwtSecret,
+                                   @Value("${jwt.expiration:86400000}") long jwtExpiration) {
         this.userDetailsService = userDetailsService;
+        this.jwtSecret = jwtSecret;
+        this.jwtExpiration = jwtExpiration;
     }
 
     private Key getSigningKey() {

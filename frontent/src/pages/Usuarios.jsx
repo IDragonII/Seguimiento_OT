@@ -1,10 +1,11 @@
 import { useEffect, useState } from 'react'
+import { Pencil, Power, PowerOff } from 'lucide-react'
 import { api } from '../api/api'
 import Modal from '../components/Modal'
 
 const VACIO = { nombres: '', apellidos: '', email: '', password: '', rol: '' }
 
-const ROLES = ['ADMIN', 'FACTIBILIZADOR', 'TECNICO', 'CONSULTOR']
+const ROLES = ['ADMIN', 'FACTIBILIZADOR', 'INSTALADOR', 'TECNICO', 'CONSULTOR']
 
 export default function Usuarios() {
   const [usuarios, setUsuarios] = useState([])
@@ -186,6 +187,7 @@ export default function Usuarios() {
         {usuarios.length === 0 ? (
           <div className="vacio">No hay usuarios</div>
         ) : (
+          <div className="tabla-scroll">
           <table>
             <thead>
               <tr>
@@ -214,15 +216,24 @@ export default function Usuarios() {
                     </span>
                   </td>
                   <td data-label="">
-                    <div className="acciones">
-                      <button className="btn btn-secundario btn-chico" onClick={() => editar(u)}>
-                        Editar
+                    <div className="acciones-fila">
+                      <button
+                        type="button"
+                        className="btn-icono"
+                        title="Editar"
+                        aria-label="Editar"
+                        onClick={() => editar(u)}
+                      >
+                        <Pencil size={16} />
                       </button>
                       <button
-                        className={`btn btn-chico ${u.activo ? 'btn-peligro' : ''}`}
+                        type="button"
+                        className={`btn-icono ${u.activo ? 'btn-icono-peligro' : ''}`}
+                        title={u.activo ? 'Desactivar' : 'Activar'}
+                        aria-label={u.activo ? 'Desactivar' : 'Activar'}
                         onClick={() => cambiarEstado(u)}
                       >
-                        {u.activo ? 'Desactivar' : 'Activar'}
+                        {u.activo ? <PowerOff size={16} /> : <Power size={16} />}
                       </button>
                     </div>
                   </td>
@@ -230,6 +241,7 @@ export default function Usuarios() {
               ))}
             </tbody>
           </table>
+          </div>
         )}
       </div>
     </>

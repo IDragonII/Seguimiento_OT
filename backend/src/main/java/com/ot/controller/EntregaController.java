@@ -43,15 +43,24 @@ public class EntregaController {
 
     @GetMapping
     public ResponseEntity<List<Map<String, Object>>> getAll() {
+        List<Entrega> entregas = entregaRepository.findAllByOrderByFechaEntregaDesc();
+        List<Long> entregaIds = entregas.stream().map(Entrega::getId).toList();
+
+        // Batch: 1 query para todos los detalles (antes 1 findByEntregaId por entrega).
+        Map<Long, List<EntregaDetalle>> detallesPorEntrega = entregaIds.isEmpty()
+            ? Map.of()
+            : detalleRepository.findByEntregaIdIn(entregaIds).stream()
+                .collect(Collectors.groupingBy(d -> d.getEntrega().getId()));
+
         List<Map<String, Object>> result = new ArrayList<>();
-        for (Entrega entrega : entregaRepository.findAllByOrderByFechaEntregaDesc()) {
+        for (Entrega entrega : entregas) {
             Map<String, Object> item = new HashMap<>();
             item.put("id", entrega.getId());
             item.put("fechaEntrega", entrega.getFechaEntrega());
             item.put("entregadoPor", entrega.getEntregadoPor());
             item.put("observacion", entrega.getObservacion());
             item.put("fechaCreacion", entrega.getFechaCreacion());
-            item.put("detalles", detalleRepository.findByEntregaId(entrega.getId()));
+            item.put("detalles", detallesPorEntrega.getOrDefault(entrega.getId(), List.of()));
             result.add(item);
         }
         return ResponseEntity.ok(result);
@@ -141,8 +150,11 @@ public class EntregaController {
     @GetMapping("/mis-ot")
     public ResponseEntity<List<Map<String, Object>>> getMisOT(Authentication auth) {
         Usuario usuario = usuarioRepository.findByEmail(auth.getName()).orElseThrow();
-        List<EntregaDetalle> detalles = detalleRepository.findByTecnicoId(usuario.getId());
+        // 1. Detalles del técnico ordenados por entrega más reciente.
+        List<EntregaDetalle> detalles =
+            detalleRepository.findByTecnicoIdOrderByFechaCreacionDesc(usuario.getId());
 
+        // 2. Fechas de programación (batch: 1 query para todas las OT de la bandeja)
         List<Long> ordenIds = detalles.stream().map(d -> d.getOrdenTrabajo().getId()).toList();
         Map<Long, java.time.LocalDate> fechasProgramacion = new HashMap<>();
         if (!ordenIds.isEmpty()) {
@@ -171,9 +183,8 @@ public class EntregaController {
 
     @GetMapping("/tecnicos")
     public ResponseEntity<List<Map<String, Object>>> getTecnicosConEntregas() {
-        List<EntregaDetalle> detalles = detalleRepository.findAll().stream()
-            .filter(d -> d.getTecnico() != null)
-            .collect(Collectors.toList());
+        // Query filtrada con join (antes: findAll() de la tabla entera + filtro en memoria).
+        List<EntregaDetalle> detalles = detalleRepository.findAllConTecnico();
         Map<Long, Map<String, Object>> tecnicoMap = new HashMap<>();
 
         for (EntregaDetalle detalle : detalles) {

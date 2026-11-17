@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { Eye, PackageCheck } from 'lucide-react'
 import { api } from '../api/api'
 import Modal from '../components/Modal'
 
@@ -230,6 +231,7 @@ export default function Entregas({ modo = 'entregas' }) {
           {tecnicos.length === 0 ? (
             <div className="vacio">No hay técnicos con OT entregadas</div>
           ) : (
+            <div className="tabla-scroll">
             <table>
               <thead>
                 <tr>
@@ -244,18 +246,23 @@ export default function Entregas({ modo = 'entregas' }) {
                     <td data-label="Técnico">{t.nombre}</td>
                     <td data-label="Total OT entregadas">{t.total}</td>
                     <td data-label="">
-                      <button
-                        className="btn btn-secundario btn-chico"
-                        type="button"
-                        onClick={() => setTecnicoDetalle(t)}
-                      >
-                        Detalles
-                      </button>
+                      <div className="acciones-fila">
+                        <button
+                          className="btn-icono"
+                          type="button"
+                          title="Ver detalles"
+                          aria-label="Ver detalles"
+                          onClick={() => setTecnicoDetalle(t)}
+                        >
+                          <Eye size={16} />
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))}
               </tbody>
             </table>
+            </div>
           )}
         </div>
 
@@ -504,6 +511,7 @@ export default function Entregas({ modo = 'entregas' }) {
         {entregas.length === 0 ? (
           <div className="vacio">No hay entregas</div>
         ) : (
+          <div className="tabla-scroll">
           <table>
             <thead>
               <tr>
@@ -531,23 +539,35 @@ export default function Entregas({ modo = 'entregas' }) {
                     </td>
                     <td data-label="Observación">{entrega.observacion || '—'}</td>
                     <td data-label="">
-                      {tienePendientesRecepcion && (
+                      <div className="acciones-fila">
+                        {tienePendientesRecepcion && (
+                          <button
+                            type="button"
+                            className="btn-icono"
+                            title="Registrar recepción"
+                            aria-label="Registrar recepción"
+                            onClick={() => abrirRecepcionModal(entrega.id)}
+                          >
+                            <PackageCheck size={16} />
+                          </button>
+                        )}
                         <button
-                          className="btn btn-secundario btn-chico"
-                          onClick={() => abrirRecepcionModal(entrega.id)}
+                          type="button"
+                          className="btn-icono"
+                          title="Ver detalle"
+                          aria-label="Ver detalle"
+                          onClick={() => verDetalle(entrega.id)}
                         >
-                          Recepción
+                          <Eye size={16} />
                         </button>
-                      )}
-                      <button className="btn btn-secundario btn-chico" onClick={() => verDetalle(entrega.id)}>
-                        Ver detalle
-                      </button>
+                      </div>
                     </td>
                   </tr>
                 )
               })}
             </tbody>
           </table>
+          </div>
         )}
       </div>
 

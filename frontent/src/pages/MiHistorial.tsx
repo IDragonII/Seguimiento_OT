@@ -40,6 +40,7 @@ const ACCIONES: Record<string, string> = {
   ENTREGA: 'Entrega al técnico',
   SOLICITUD_DEVOLUCION: 'Solicitud de devolución',
   CONFIRMACION_RECEPCION: 'Confirmación de recepción',
+  PROGRAMACION_EJECUCION: 'Programación para ejecución',
   ALERTA_VENCIMIENTO: 'Alerta de vencimiento',
 }
 
@@ -50,6 +51,7 @@ const COLOR_ACCION: Record<string, string> = {
   ENTREGA: '#3478C7',
   SOLICITUD_DEVOLUCION: '#D97706',
   CONFIRMACION_RECEPCION: '#27976B',
+  PROGRAMACION_EJECUCION: '#8B5CF6',
   ALERTA_VENCIMIENTO: '#DC2626',
 }
 

@@ -10,6 +10,7 @@ import {
   Radar,
   Truck,
   Undo2,
+  Wrench,
 } from 'lucide-react'
 
 export const BASE_PANEL = '/panel'
@@ -70,6 +71,13 @@ export const MODULOS = [
     nombre: 'Reportes',
     descripcion: 'Informes y exportaciones',
     icono: BarChart3,
+  },
+  // INSTALADOR
+  {
+    key: 'ejecucion',
+    nombre: 'Programación de ejecución',
+    descripcion: 'Programa para ejecución las OT devueltas',
+    icono: Wrench,
   },
   // FACTIBILIZADOR
   {
