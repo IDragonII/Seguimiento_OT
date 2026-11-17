@@ -25,7 +25,9 @@ interface OTInfo {
   numeroOT?: number
   tipoOT?: { id?: number; nombre?: string }
   estado?: { nombre?: string }
-  descripcion?: string
+  apellidosNombre?: string | null
+  descripcion?: string | null
+  categoria?: { id?: number; nombre?: string } | null
   ubicacion?: string
 }
 
@@ -722,6 +724,7 @@ function ModalNuevaEntrega({
     return (
       String(o.numeroOT ?? '').includes(q) ||
       (o.tipoOT?.nombre ?? '').toLowerCase().includes(q) ||
+      (o.apellidosNombre ?? '').toLowerCase().includes(q) ||
       (o.descripcion ?? '').toLowerCase().includes(q)
     )
   })
@@ -864,7 +867,7 @@ function ModalNuevaEntrega({
                     >
                       <span className="min-w-0 flex-1 truncate text-[13px] text-[#55657A]">
                         <strong className="font-bold text-[#18283E]">#{o.numeroOT}</strong> — {o.tipoOT?.nombre}
-                        {o.descripcion && <span className="text-[#718096]"> — {o.descripcion}</span>}
+                        {o.apellidosNombre && <span className="text-[#718096]"> — {o.apellidosNombre}</span>}
                       </span>
                       <span className="shrink-0 text-xs font-semibold text-[#3478C7]">+ Agregar</span>
                     </button>
@@ -894,7 +897,7 @@ function ModalNuevaEntrega({
                     >
                       <span className="min-w-0 flex-1 truncate text-[#55657A]">
                         <strong className="font-bold text-[#18283E]">#{o?.numeroOT}</strong> — {o?.tipoOT?.nombre}
-                        {o?.descripcion && <span className="text-[#718096]"> — {o.descripcion}</span>}
+                        {o?.apellidosNombre && <span className="text-[#718096]"> — {o.apellidosNombre}</span>}
                       </span>
                       <select
                         data-entrega-tecnico-fila={f.ordenId}
@@ -1198,8 +1201,8 @@ function ModalRecepcion({
                         #{d.ordenTrabajo?.numeroOT}
                       </strong>{' '}
                       — {d.ordenTrabajo?.tipoOT?.nombre}
-                      {d.ordenTrabajo?.descripcion && (
-                        <span className="text-[#718096]"> — {d.ordenTrabajo.descripcion}</span>
+                      {d.ordenTrabajo?.apellidosNombre && (
+                        <span className="text-[#718096]"> — {d.ordenTrabajo.apellidosNombre}</span>
                       )}
                     </span>
                     {!recibible && (

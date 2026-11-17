@@ -26,12 +26,20 @@ interface TipoOT {
   nombre: string
 }
 
+interface CategoriaOT {
+  id: number
+  nombre: string
+  activo?: boolean
+}
+
 interface OT {
   id: number
   numeroOT?: number
   tipoOT?: { id?: number; nombre?: string }
   estado?: { nombre?: string }
-  descripcion?: string
+  apellidosNombre?: string | null
+  descripcion?: string | null
+  categoria?: { id?: number; nombre?: string } | null
   ubicacion?: string
   fechaRegistro?: string
   registradoPor?: UsuarioRef | null
@@ -205,8 +213,8 @@ function ModalDetalle({
           </div>
         </div>
 
-        {ot.descripcion && (
-          <p className="mb-4 text-sm leading-relaxed text-[#55657A]">{ot.descripcion}</p>
+        {ot.apellidosNombre && (
+          <p className="mb-4 text-sm leading-relaxed text-[#55657A]">{ot.apellidosNombre}</p>
         )}
 
         <h3 className="mb-1 text-xs font-bold uppercase tracking-wide text-[#18283E]">
@@ -215,6 +223,8 @@ function ModalDetalle({
         <dl className="mb-4">
           <Fila label="Número" valor={ot.numeroOT != null ? `#${ot.numeroOT}` : undefined} />
           <Fila label="Tipo" valor={ot.tipoOT?.nombre} />
+          <Fila label="Categoría" valor={ot.categoria?.nombre} />
+          <Fila label="Descripción" valor={ot.descripcion} />
           <Fila label="Estado" valor={estado} />
           <Fila label="Ubicación actual" valor={ot.ubicacion} />
           <Fila label="Registrada por" valor={nombreDe(ot.registradoPor)} />
@@ -259,16 +269,20 @@ function ModalDetalle({
 
 function ModalNueva({
   tipos,
+  categorias,
   onCerrar,
   onCreada,
 }: {
   tipos: TipoOT[]
+  categorias: CategoriaOT[]
   onCerrar: () => void
   onCreada: (ot: OT) => void
 }) {
   const [tipoOTId, setTipoOTId] = useState('')
   const [numeroOT, setNumeroOT] = useState('')
+  const [apellidosNombre, setApellidosNombre] = useState('')
   const [descripcion, setDescripcion] = useState('')
+  const [categoriaId, setCategoriaId] = useState('')
   const [error, setError] = useState('')
   const [enviando, setEnviando] = useState(false)
 
@@ -281,13 +295,23 @@ function ModalNueva({
       setError('Indica el número de OT')
       return
     }
+    if (!apellidosNombre.trim()) {
+      setError('Indica los apellidos y nombres')
+      return
+    }
+    if (!categoriaId) {
+      setError('Selecciona la categoría')
+      return
+    }
     setEnviando(true)
     setError('')
     try {
       const res = await api.post('/ordenes-trabajo', {
         tipoOTId: Number(tipoOTId),
         numeroOT: Number(numeroOT),
+        apellidosNombre: apellidosNombre.trim(),
         descripcion,
+        categoriaId: Number(categoriaId),
       })
       onCreada(res as OT)
     } catch (err) {
@@ -334,6 +358,38 @@ function ModalNueva({
               className="mt-1 w-full rounded-lg border border-[#E4E8EE] px-3 py-2 text-sm text-[#18283E] outline-none focus:border-[#3478C7] focus:ring-2 focus:ring-[#3478C7]/25"
             />
           </label>
+          <label className="block">
+            <span className="text-xs font-semibold uppercase tracking-wide text-[#718096]">
+              Apellidos y nombre
+            </span>
+            <input
+              data-nueva-apellidos
+              type="text"
+              value={apellidosNombre}
+              onChange={(e) => setApellidosNombre(e.target.value)}
+              className="mt-1 w-full rounded-lg border border-[#E4E8EE] px-3 py-2 text-sm text-[#18283E] outline-none focus:border-[#3478C7] focus:ring-2 focus:ring-[#3478C7]/25"
+            />
+          </label>
+          <label className="block">
+            <span className="text-xs font-semibold uppercase tracking-wide text-[#718096]">
+              Categoría
+            </span>
+            <select
+              data-nueva-categoria
+              value={categoriaId}
+              onChange={(e) => setCategoriaId(e.target.value)}
+              className="mt-1 w-full rounded-lg border border-[#E4E8EE] bg-white px-3 py-2 text-sm text-[#18283E] outline-none focus:border-[#3478C7] focus:ring-2 focus:ring-[#3478C7]/25"
+            >
+              <option value="">Seleccione…</option>
+              {categorias
+                .filter((c) => c.activo)
+                .map((c) => (
+                  <option key={c.id} value={c.id}>
+                    {c.nombre}
+                  </option>
+                ))}
+            </select>
+          </label>
         </div>
         <label className="block">
           <span className="text-xs font-semibold uppercase tracking-wide text-[#718096]">
@@ -378,17 +434,21 @@ function ModalNueva({
 function ModalEditar({
   ot,
   tipos,
+  categorias,
   onCerrar,
   onGuardada,
 }: {
   ot: OT
   tipos: TipoOT[]
+  categorias: CategoriaOT[]
   onCerrar: () => void
   onGuardada: (ot: OT) => void
 }) {
   const [tipoOTId, setTipoOTId] = useState(String(ot.tipoOT?.id ?? ''))
   const [numeroOT, setNumeroOT] = useState(ot.numeroOT != null ? String(ot.numeroOT) : '')
+  const [apellidosNombre, setApellidosNombre] = useState(ot.apellidosNombre ?? '')
   const [descripcion, setDescripcion] = useState(ot.descripcion ?? '')
+  const [categoriaId, setCategoriaId] = useState(String(ot.categoria?.id ?? ''))
   const [error, setError] = useState('')
   const [enviando, setEnviando] = useState(false)
 
@@ -401,13 +461,23 @@ function ModalEditar({
       setError('Indica el número de OT')
       return
     }
+    if (!apellidosNombre.trim()) {
+      setError('Indica los apellidos y nombres')
+      return
+    }
+    if (!categoriaId) {
+      setError('Selecciona la categoría')
+      return
+    }
     setEnviando(true)
     setError('')
     try {
       const res = await api.put(`/ordenes-trabajo/${ot.id}`, {
         tipoOTId: Number(tipoOTId),
         numeroOT: Number(numeroOT),
+        apellidosNombre: apellidosNombre.trim(),
         descripcion,
+        categoriaId: Number(categoriaId),
       })
       onGuardada(res as OT)
     } catch (err) {
@@ -454,6 +524,38 @@ function ModalEditar({
               onChange={(e) => setNumeroOT(e.target.value)}
               className="mt-1 w-full rounded-lg border border-[#E4E8EE] px-3 py-2 text-sm text-[#18283E] outline-none focus:border-[#3478C7] focus:ring-2 focus:ring-[#3478C7]/25"
             />
+          </label>
+          <label className="block">
+            <span className="text-xs font-semibold uppercase tracking-wide text-[#718096]">
+              Apellidos y nombre
+            </span>
+            <input
+              data-editar-apellidos
+              type="text"
+              value={apellidosNombre}
+              onChange={(e) => setApellidosNombre(e.target.value)}
+              className="mt-1 w-full rounded-lg border border-[#E4E8EE] px-3 py-2 text-sm text-[#18283E] outline-none focus:border-[#3478C7] focus:ring-2 focus:ring-[#3478C7]/25"
+            />
+          </label>
+          <label className="block">
+            <span className="text-xs font-semibold uppercase tracking-wide text-[#718096]">
+              Categoría
+            </span>
+            <select
+              data-editar-categoria
+              value={categoriaId}
+              onChange={(e) => setCategoriaId(e.target.value)}
+              className="mt-1 w-full rounded-lg border border-[#E4E8EE] bg-white px-3 py-2 text-sm text-[#18283E] outline-none focus:border-[#3478C7] focus:ring-2 focus:ring-[#3478C7]/25"
+            >
+              <option value="">Seleccione…</option>
+              {categorias
+                .filter((c) => c.activo || String(c.id) === categoriaId)
+                .map((c) => (
+                  <option key={c.id} value={c.id}>
+                    {c.nombre}
+                  </option>
+                ))}
+            </select>
           </label>
         </div>
         <label className="block">
@@ -506,11 +608,13 @@ export default function OrdenesTrabajoPanel() {
 
   const [ots, setOts] = useState<OT[] | null>(null)
   const [tipos, setTipos] = useState<TipoOT[]>([])
+  const [categorias, setCategorias] = useState<CategoriaOT[]>([])
   const [error, setError] = useState('')
   const [vista, setVista] = useState<'lista' | 'fichas'>('lista')
   const [busqueda, setBusqueda] = useState('')
   const [filtroTipo, setFiltroTipo] = useState('')
   const [filtroEstado, setFiltroEstado] = useState('')
+  const [filtroCategoria, setFiltroCategoria] = useState('')
   const [orden, setOrden] = useState('reciente')
   const [modal, setModal] = useState<ModalState>(null)
 
@@ -529,6 +633,10 @@ export default function OrdenesTrabajoPanel() {
       .get('/tipos-ot')
       .then((t: TipoOT[]) => setTipos(t))
       .catch(() => setTipos([]))
+    api
+      .get('/categorias')
+      .then((c: CategoriaOT[]) => setCategorias(c))
+      .catch(() => setCategorias([]))
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
@@ -539,11 +647,14 @@ export default function OrdenesTrabajoPanel() {
   const filtradas = lista.filter((o) => {
     if (filtroTipo && String(o.tipoOT?.id ?? '') !== filtroTipo) return false
     if (filtroEstado && o.estado?.nombre !== filtroEstado) return false
+    if (filtroCategoria && String(o.categoria?.id ?? '') !== filtroCategoria) return false
     if (!busqueda) return true
     const q = busqueda.trim().toLowerCase()
     return (
       String(o.numeroOT ?? '').includes(q) ||
+      (o.apellidosNombre ?? '').toLowerCase().includes(q) ||
       (o.descripcion ?? '').toLowerCase().includes(q) ||
+      (o.categoria?.nombre ?? '').toLowerCase().includes(q) ||
       (o.tipoOT?.nombre ?? '').toLowerCase().includes(q)
     )
   })
@@ -655,7 +766,7 @@ export default function OrdenesTrabajoPanel() {
                 type="search"
                 value={busqueda}
                 onChange={(e) => setBusqueda(e.target.value)}
-                placeholder="Buscar por Nº, tipo o descripción…"
+                placeholder="Buscar por Nº, apellidos o categoría…"
                 className="w-full rounded-lg border border-[#E4E8EE] py-2 pl-9 pr-3 text-sm text-[#18283E] outline-none focus:border-[#3478C7] focus:ring-2 focus:ring-[#3478C7]/25"
               />
             </div>
@@ -670,6 +781,20 @@ export default function OrdenesTrabajoPanel() {
               {tipos.map((t) => (
                 <option key={t.id} value={String(t.id)}>
                   {t.nombre}
+                </option>
+              ))}
+            </select>
+
+            <select
+              data-filtro-categoria
+              value={filtroCategoria}
+              onChange={(e) => setFiltroCategoria(e.target.value)}
+              className="rounded-lg border border-[#E4E8EE] bg-white px-2.5 py-2 text-sm text-[#18283E] outline-none focus:border-[#3478C7]"
+            >
+              <option value="">Todas las categorías</option>
+              {categorias.map((c) => (
+                <option key={c.id} value={String(c.id)}>
+                  {c.nombre}
                 </option>
               ))}
             </select>
@@ -766,7 +891,8 @@ export default function OrdenesTrabajoPanel() {
                         {o.ubicacion || '—'}
                       </div>
                       <div className="hidden max-w-[240px] flex-1 truncate text-[11px] text-[#718096] sm:block">
-                        {o.descripcion || ''}
+                        {o.apellidosNombre || ''}
+                        {o.categoria?.nombre ? ` · ${o.categoria.nombre}` : ''}
                       </div>
                       <div className="text-right text-[11px] leading-relaxed text-[#718096]">
                         {fechaCorta(o.fechaRegistro) || '—'}
@@ -820,8 +946,11 @@ export default function OrdenesTrabajoPanel() {
                           <span className="font-medium text-[#718096]">Registro: </span>
                           {fechaCorta(o.fechaRegistro) || '—'}
                         </div>
-                        {o.descripcion && (
-                          <div className="truncate pt-1 text-[#718096]">{o.descripcion}</div>
+                        {o.apellidosNombre && (
+                          <div className="truncate pt-1 text-[#718096]">
+                            {o.apellidosNombre}
+                            {o.categoria?.nombre ? ` · ${o.categoria.nombre}` : ''}
+                          </div>
                         )}
                       </div>
                     </button>
@@ -836,6 +965,7 @@ export default function OrdenesTrabajoPanel() {
       {modal?.tipo === 'nueva' && (
         <ModalNueva
           tipos={tipos}
+          categorias={categorias}
           onCerrar={() => setModal(null)}
           onCreada={trasCrear}
         />
@@ -852,6 +982,7 @@ export default function OrdenesTrabajoPanel() {
         <ModalEditar
           ot={otModal}
           tipos={tipos}
+          categorias={categorias}
           onCerrar={() => setModal({ tipo: 'detalle', id: modal.id })}
           onGuardada={async () => {
             await recargar()

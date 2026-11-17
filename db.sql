@@ -68,6 +68,22 @@ CREATE TABLE tipos_ot (
 );
 
 -- =====================================================
+-- 3b. CATEGORIAS DE OT (fase electrica)
+-- =====================================================
+
+CREATE TABLE categorias_ot (
+    id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+
+    nombre VARCHAR(100) NOT NULL UNIQUE,
+
+    activo BOOLEAN NOT NULL DEFAULT TRUE
+);
+
+INSERT INTO categorias_ot (nombre) VALUES
+('Monofásica'),
+('Trifásica');
+
+-- =====================================================
 -- 4. ESTADOS DE OT
 -- =====================================================
 
@@ -102,7 +118,14 @@ CREATE TABLE ordenes_trabajo (
     estado_id BIGINT NOT NULL
         REFERENCES estados_ot(id),
 
+    -- Titular de la OT: apellidos y nombres (antes la columna 'descripcion').
+    apellidos_nombre TEXT,
+
+    -- Descripcion del trabajo a realizar.
     descripcion TEXT,
+
+    categoria_id BIGINT
+        REFERENCES categorias_ot(id),
 
     -- Ubicacion fisica actual de la OT.
     -- Por defecto al registrar: 'Por entregar'.

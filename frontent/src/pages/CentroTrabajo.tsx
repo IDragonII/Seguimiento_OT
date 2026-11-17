@@ -24,7 +24,9 @@ interface OTInfo {
   numeroOT?: number
   tipoOT?: { id?: number; nombre?: string }
   estado?: { nombre?: string }
-  descripcion?: string
+  apellidosNombre?: string | null
+  descripcion?: string | null
+  categoria?: { id?: number; nombre?: string } | null
   ubicacion?: string
   fechaRegistro?: string
 }
@@ -335,14 +337,16 @@ function Expediente({
           <BadgeEstado estado={estado} />
         </div>
 
-        {ot?.descripcion && (
-          <p className="mb-4 text-sm leading-relaxed text-[#55657A]">{ot.descripcion}</p>
+        {ot?.apellidosNombre && (
+          <p className="mb-4 text-sm leading-relaxed text-[#55657A]">{ot.apellidosNombre}</p>
         )}
 
         <h3 className="mb-1 text-xs font-bold uppercase tracking-wide text-[#18283E]">
           Información operativa
         </h3>
         <dl className="mb-4">
+          <Fila label="Categoría" valor={ot?.categoria?.nombre} />
+          <Fila label="Descripción" valor={ot?.descripcion} />
           <Fila label="Fecha de registro" valor={fechaCorta(ot?.fechaRegistro)} />
           <Fila
             label="Fecha programada"

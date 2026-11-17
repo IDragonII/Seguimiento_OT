@@ -22,6 +22,7 @@ public class DataSeeder implements ApplicationRunner {
     private final UsuarioRepository usuarioRepository;
     private final EstadoOTRepository estadoOTRepository;
     private final TipoOTRepository tipoOTRepository;
+    private final CategoriaOTRepository categoriaOTRepository;
     private final ConfiguracionTiemposOTRepository configuracionTiemposOTRepository;
     private final PasswordEncoder passwordEncoder;
 
@@ -29,12 +30,14 @@ public class DataSeeder implements ApplicationRunner {
                       UsuarioRepository usuarioRepository,
                       EstadoOTRepository estadoOTRepository,
                       TipoOTRepository tipoOTRepository,
+                      CategoriaOTRepository categoriaOTRepository,
                       ConfiguracionTiemposOTRepository configuracionTiemposOTRepository,
                       PasswordEncoder passwordEncoder) {
         this.rolRepository = rolRepository;
         this.usuarioRepository = usuarioRepository;
         this.estadoOTRepository = estadoOTRepository;
         this.tipoOTRepository = tipoOTRepository;
+        this.categoriaOTRepository = categoriaOTRepository;
         this.configuracionTiemposOTRepository = configuracionTiemposOTRepository;
         this.passwordEncoder = passwordEncoder;
     }
@@ -80,6 +83,10 @@ public class DataSeeder implements ApplicationRunner {
         crearTipoSiFalta("Otros", "Otros trabajos no clasificados");
         log.info("Tipos OT asegurados");
 
+        crearCategoriaSiFalta("Monofásica");
+        crearCategoriaSiFalta("Trifásica");
+        log.info("Categorías OT aseguradas");
+
         if (configuracionTiemposOTRepository.count() == 0) {
             estadoOTRepository.findByNombre("ENTREGADO").ifPresent(estado -> {
                 ConfiguracionTiemposOT config = new ConfiguracionTiemposOT();
@@ -123,6 +130,15 @@ public class DataSeeder implements ApplicationRunner {
             tipo.setDescripcion(descripcion);
             tipoOTRepository.save(tipo);
             log.info("Tipo OT '{}' creado", nombre);
+        }
+    }
+
+    private void crearCategoriaSiFalta(String nombre) {
+        if (categoriaOTRepository.findByNombre(nombre).isEmpty()) {
+            CategoriaOT categoria = new CategoriaOT();
+            categoria.setNombre(nombre);
+            categoriaOTRepository.save(categoria);
+            log.info("Categoría '{}' creada", nombre);
         }
     }
 }

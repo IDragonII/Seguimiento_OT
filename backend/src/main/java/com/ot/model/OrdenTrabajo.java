@@ -31,8 +31,15 @@ public class OrdenTrabajo {
     @JoinColumn(name = "estado_id", nullable = false)
     private EstadoOT estado;
 
+    @Column(name = "apellidos_nombre", columnDefinition = "TEXT")
+    private String apellidosNombre;
+
     @Column(name = "descripcion", columnDefinition = "TEXT")
     private String descripcion;
+
+    @ManyToOne
+    @JoinColumn(name = "categoria_id")
+    private CategoriaOT categoria;
 
     @Column(name = "ubicacion", length = 120)
     private String ubicacion;

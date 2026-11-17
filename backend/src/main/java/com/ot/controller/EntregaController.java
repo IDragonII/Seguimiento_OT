@@ -197,7 +197,10 @@ public class EntregaController {
             otInfo.put("id", detalle.getOrdenTrabajo().getId());
             otInfo.put("numeroOT", detalle.getOrdenTrabajo().getNumeroOT());
             otInfo.put("tipoOT", detalle.getOrdenTrabajo().getTipoOT() != null ? detalle.getOrdenTrabajo().getTipoOT().getNombre() : "");
+            otInfo.put("apellidosNombre", detalle.getOrdenTrabajo().getApellidosNombre());
             otInfo.put("descripcion", detalle.getOrdenTrabajo().getDescripcion());
+            otInfo.put("categoria", detalle.getOrdenTrabajo().getCategoria() != null
+                ? detalle.getOrdenTrabajo().getCategoria().getNombre() : "");
             otInfo.put("fechaEntrega", detalle.getFechaCreacion());
             otInfo.put("estado", detalle.getOrdenTrabajo().getEstado() != null
                 ? detalle.getOrdenTrabajo().getEstado().getNombre() : "");

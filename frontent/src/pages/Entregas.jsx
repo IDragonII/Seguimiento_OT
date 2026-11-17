@@ -208,6 +208,7 @@ export default function Entregas({ modo = 'entregas' }) {
     return (
       String(o.numeroOT).includes(busqueda) ||
       o.tipoOT?.nombre.toLowerCase().includes(q) ||
+      o.apellidosNombre?.toLowerCase().includes(q) ||
       o.descripcion?.toLowerCase().includes(q)
     )
   })
@@ -272,7 +273,7 @@ export default function Entregas({ modo = 'entregas' }) {
                   <tr>
                     <th>OT</th>
                     <th>Tipo</th>
-                    <th>Descripción</th>
+                    <th>Apellidos y nombre</th>
                     <th>Entrega</th>
                     <th>Estado</th>
                     <th>Ubicación</th>
@@ -283,7 +284,7 @@ export default function Entregas({ modo = 'entregas' }) {
                     <tr key={o.id}>
                       <td data-label="OT">#{o.numeroOT}</td>
                       <td data-label="Tipo">{o.tipoOT}</td>
-                      <td data-label="Descripción">{o.descripcion || '—'}</td>
+                      <td data-label="Apellidos y nombre">{o.apellidosNombre || '—'}</td>
                       <td data-label="Entrega">
                         {o.fechaEntrega ? new Date(o.fechaEntrega).toLocaleString() : '—'}
                       </td>
@@ -392,8 +393,8 @@ export default function Entregas({ modo = 'entregas' }) {
                       >
                         <div style={{ flex: 1, minWidth: 0 }}>
                           <strong>#{o.numeroOT}</strong> — {o.tipoOT?.nombre}
-                          {o.descripcion && (
-                            <span style={{ color: 'var(--muted)', fontSize: 12, marginLeft: 6 }}>{` — ${o.descripcion}`}</span>
+                          {o.apellidosNombre && (
+                            <span style={{ color: 'var(--muted)', fontSize: 12, marginLeft: 6 }}>{` — ${o.apellidosNombre}`}</span>
                           )}
                         </div>
                         <span style={{ color: 'var(--primary)', fontSize: 12, fontWeight: 600, whiteSpace: 'nowrap' }}>
@@ -429,8 +430,8 @@ export default function Entregas({ modo = 'entregas' }) {
                         >
                           <div style={{ flex: 1, minWidth: 0 }}>
                             <strong>#{o?.numeroOT}</strong> — {o?.tipoOT?.nombre}
-                            {o?.descripcion && (
-                              <span style={{ color: 'var(--muted)', fontSize: 12, marginLeft: 6 }}>{` — ${o.descripcion}`}</span>
+                            {o?.apellidosNombre && (
+                              <span style={{ color: 'var(--muted)', fontSize: 12, marginLeft: 6 }}>{` — ${o.apellidosNombre}`}</span>
                             )}
                           </div>
                           <select
@@ -645,8 +646,8 @@ export default function Entregas({ modo = 'entregas' }) {
                       />
                       <div style={{ flex: 1, minWidth: 0 }}>
                         <strong>#{d.ordenTrabajo?.numeroOT}</strong> — {d.ordenTrabajo?.tipoOT?.nombre}
-                        {d.ordenTrabajo?.descripcion && (
-                          <span style={{ color: 'var(--muted)', fontSize: 12, marginLeft: 6 }}>{` — ${d.ordenTrabajo.descripcion}`}</span>
+                        {d.ordenTrabajo?.apellidosNombre && (
+                          <span style={{ color: 'var(--muted)', fontSize: 12, marginLeft: 6 }}>{` — ${d.ordenTrabajo.apellidosNombre}`}</span>
                         )}
                       </div>
                       {!recibible && (

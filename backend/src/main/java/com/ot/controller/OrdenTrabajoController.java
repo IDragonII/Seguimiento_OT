@@ -12,6 +12,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.HashMap;
+import java.util.Objects;
 
 @RestController
 @RequestMapping("/api/ordenes-trabajo")
@@ -22,15 +23,17 @@ public class OrdenTrabajoController {
     private final EstadoOTRepository estadoRepository;
     private final UsuarioRepository usuarioRepository;
     private final HistorialOTRepository historialRepository;
+    private final CategoriaOTRepository categoriaRepository;
 
     public OrdenTrabajoController(OrdenTrabajoRepository ordenRepository, TipoOTRepository tipoRepository,
                                   EstadoOTRepository estadoRepository, UsuarioRepository usuarioRepository,
-                                  HistorialOTRepository historialRepository) {
+                                  HistorialOTRepository historialRepository, CategoriaOTRepository categoriaRepository) {
         this.ordenRepository = ordenRepository;
         this.tipoRepository = tipoRepository;
         this.estadoRepository = estadoRepository;
         this.usuarioRepository = usuarioRepository;
         this.historialRepository = historialRepository;
+        this.categoriaRepository = categoriaRepository;
     }
 
     @GetMapping
@@ -59,6 +62,20 @@ public class OrdenTrabajoController {
             return ResponseEntity.badRequest().body(error);
         }
 
+        String apellidos = request.getApellidosNombre() != null ? request.getApellidosNombre().trim() : "";
+        if (apellidos.isEmpty()) {
+            return ResponseEntity.badRequest()
+                .body(Map.of("mensaje", "Los apellidos y nombres son obligatorios"));
+        }
+        if (request.getCategoriaId() == null) {
+            return ResponseEntity.badRequest().body(Map.of("mensaje", "La categoría es obligatoria"));
+        }
+        CategoriaOT categoria = categoriaRepository.findById(request.getCategoriaId())
+            .orElse(null);
+        if (categoria == null) {
+            return ResponseEntity.badRequest().body(Map.of("mensaje", "Categoría desconocida"));
+        }
+
         TipoOT tipo = tipoRepository.findById(request.getTipoOTId()).orElseThrow();
         EstadoOT estado = estadoRepository.findByNombre("PROGRAMADO").orElseThrow();
         Usuario usuario = usuarioRepository.findByEmail(auth.getName()).orElseThrow();
@@ -67,7 +84,9 @@ public class OrdenTrabajoController {
         orden.setTipoOT(tipo);
         orden.setNumeroOT(request.getNumeroOT());
         orden.setEstado(estado);
+        orden.setApellidosNombre(apellidos);
         orden.setDescripcion(request.getDescripcion());
+        orden.setCategoria(categoria);
         orden.setUbicacion("Por entregar");
         orden.setRegistradoPor(usuario);
 
@@ -94,6 +113,15 @@ public class OrdenTrabajoController {
                     .body(Map.of("mensaje", "El tipo y el número de OT son obligatorios"));
             }
 
+            String apellidos = request.getApellidosNombre() != null ? request.getApellidosNombre().trim() : "";
+            if (apellidos.isEmpty()) {
+                return ResponseEntity.badRequest()
+                    .body(Map.of("mensaje", "Los apellidos y nombres son obligatorios"));
+            }
+            if (request.getCategoriaId() == null) {
+                return ResponseEntity.badRequest().body(Map.of("mensaje", "La categoría es obligatoria"));
+            }
+
             boolean mismoPar = orden.getTipoOT().getId().equals(request.getTipoOTId())
                 && orden.getNumeroOT().equals(request.getNumeroOT());
             if (!mismoPar && ordenRepository.existsByTipoOT_IdAndNumeroOT(request.getTipoOTId(), request.getNumeroOT())) {
@@ -107,6 +135,11 @@ public class OrdenTrabajoController {
                 return ResponseEntity.badRequest().body(Map.of("mensaje", "Tipo de OT desconocido"));
             }
 
+            CategoriaOT categoria = categoriaRepository.findById(request.getCategoriaId()).orElse(null);
+            if (categoria == null) {
+                return ResponseEntity.badRequest().body(Map.of("mensaje", "Categoría desconocida"));
+            }
+
             List<String> cambios = new ArrayList<>();
 
             if (!orden.getTipoOT().getId().equals(tipo.getId())) {
@@ -117,6 +150,20 @@ public class OrdenTrabajoController {
             if (!orden.getNumeroOT().equals(request.getNumeroOT())) {
                 cambios.add("Número: #" + orden.getNumeroOT() + " → #" + request.getNumeroOT());
                 orden.setNumeroOT(request.getNumeroOT());
+            }
+
+            String apellidosActual = orden.getApellidosNombre() == null ? "" : orden.getApellidosNombre();
+            if (!apellidosActual.equals(apellidos)) {
+                cambios.add("Apellidos y nombres actualizados");
+                orden.setApellidosNombre(apellidos);
+            }
+
+            Long categoriaActualId = orden.getCategoria() != null ? orden.getCategoria().getId() : null;
+            if (!Objects.equals(categoriaActualId, categoria.getId())) {
+                cambios.add("Categoría: "
+                    + (orden.getCategoria() != null ? orden.getCategoria().getNombre() : "sin categoría")
+                    + " → " + categoria.getNombre());
+                orden.setCategoria(categoria);
             }
 
             String descActual = orden.getDescripcion() == null ? "" : orden.getDescripcion();
@@ -159,13 +206,19 @@ public class OrdenTrabajoController {
     public static class OrdenTrabajoRequest {
         private Long tipoOTId;
         private Integer numeroOT;
+        private String apellidosNombre;
         private String descripcion;
+        private Long categoriaId;
 
         public Long getTipoOTId() { return tipoOTId; }
         public void setTipoOTId(Long tipoOTId) { this.tipoOTId = tipoOTId; }
         public Integer getNumeroOT() { return numeroOT; }
         public void setNumeroOT(Integer numeroOT) { this.numeroOT = numeroOT; }
+        public String getApellidosNombre() { return apellidosNombre; }
+        public void setApellidosNombre(String apellidosNombre) { this.apellidosNombre = apellidosNombre; }
         public String getDescripcion() { return descripcion; }
         public void setDescripcion(String descripcion) { this.descripcion = descripcion; }
+        public Long getCategoriaId() { return categoriaId; }
+        public void setCategoriaId(Long categoriaId) { this.categoriaId = categoriaId; }
     }
 }

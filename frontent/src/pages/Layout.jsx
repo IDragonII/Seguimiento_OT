@@ -12,6 +12,7 @@ const MENU = [
   ]},
   { titulo: 'Administración', items: [
     { ruta: '/usuarios', etiqueta: 'Usuarios', roles: ['ADMIN'] },
+    { ruta: '/categorias', etiqueta: 'Categorías', roles: ['ADMIN'] },
     { ruta: '/configuracion', etiqueta: 'Configuración', roles: ['ADMIN'] },
   ]},
 ]

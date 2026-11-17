@@ -9,17 +9,31 @@ export default function OrdenesTrabajo() {
 
   const [ordenes, setOrdenes] = useState([])
   const [tipos, setTipos] = useState([])
+  const [categorias, setCategorias] = useState([])
   const [error, setError] = useState('')
   const [busqueda, setBusqueda] = useState('')
   const [filtroEstado, setFiltroEstado] = useState('')
+  const [filtroCategoria, setFiltroCategoria] = useState('')
   const [historial, setHistorial] = useState(null)
 
-  const [form, setForm] = useState({ tipoOTId: '', numeroOT: '', descripcion: '' })
+  const [form, setForm] = useState({
+    tipoOTId: '',
+    numeroOT: '',
+    apellidosNombre: '',
+    descripcion: '',
+    categoriaId: '',
+  })
   const [formAbierto, setFormAbierto] = useState(false)
   const [mensajeOk, setMensajeOk] = useState('')
 
   const [editando, setEditando] = useState(null)
-  const [formEdit, setFormEdit] = useState({ tipoOTId: '', numeroOT: '', descripcion: '' })
+  const [formEdit, setFormEdit] = useState({
+    tipoOTId: '',
+    numeroOT: '',
+    apellidosNombre: '',
+    descripcion: '',
+    categoriaId: '',
+  })
 
   function cargar() {
     api
@@ -30,6 +44,7 @@ export default function OrdenesTrabajo() {
 
   useEffect(() => {
     cargar()
+    api.get('/categorias').then(setCategorias).catch(() => setCategorias([]))
     if (puedeCrear) {
       api.get('/tipos-ot').then(setTipos).catch(() => setTipos([]))
     }
@@ -43,10 +58,18 @@ export default function OrdenesTrabajo() {
       await api.post('/ordenes-trabajo', {
         tipoOTId: Number(form.tipoOTId),
         numeroOT: Number(form.numeroOT),
+        apellidosNombre: form.apellidosNombre,
         descripcion: form.descripcion,
+        categoriaId: Number(form.categoriaId),
       })
       setMensajeOk('OT registrada correctamente')
-      setForm({ tipoOTId: '', numeroOT: '', descripcion: '' })
+      setForm({
+        tipoOTId: '',
+        numeroOT: '',
+        apellidosNombre: '',
+        descripcion: '',
+        categoriaId: '',
+      })
       setFormAbierto(false)
       cargar()
     } catch (err) {
@@ -67,7 +90,9 @@ export default function OrdenesTrabajo() {
     setFormEdit({
       tipoOTId: String(orden.tipoOT?.id ?? ''),
       numeroOT: String(orden.numeroOT ?? ''),
+      apellidosNombre: orden.apellidosNombre ?? '',
       descripcion: orden.descripcion ?? '',
+      categoriaId: String(orden.categoria?.id ?? ''),
     })
     setEditando(orden)
   }
@@ -80,7 +105,9 @@ export default function OrdenesTrabajo() {
       await api.put(`/ordenes-trabajo/${editando.id}`, {
         tipoOTId: Number(formEdit.tipoOTId),
         numeroOT: Number(formEdit.numeroOT),
+        apellidosNombre: formEdit.apellidosNombre,
         descripcion: formEdit.descripcion,
+        categoriaId: Number(formEdit.categoriaId),
       })
       setMensajeOk(`OT #${editando.numeroOT} actualizada`)
       setEditando(null)
@@ -94,10 +121,13 @@ export default function OrdenesTrabajo() {
     const coincideBusqueda =
       !busqueda ||
       String(o.numeroOT).includes(busqueda) ||
+      o.apellidosNombre?.toLowerCase().includes(busqueda.toLowerCase()) ||
       o.descripcion?.toLowerCase().includes(busqueda.toLowerCase()) ||
+      o.categoria?.nombre.toLowerCase().includes(busqueda.toLowerCase()) ||
       o.tipoOT?.nombre.toLowerCase().includes(busqueda.toLowerCase())
     const coincideEstado = !filtroEstado || o.estado?.nombre === filtroEstado
-    return coincideBusqueda && coincideEstado
+    const coincideCategoria = !filtroCategoria || String(o.categoria?.id ?? '') === filtroCategoria
+    return coincideBusqueda && coincideEstado && coincideCategoria
   })
 
   return (
@@ -117,7 +147,7 @@ export default function OrdenesTrabajo() {
               </button>
             )}
             <input
-              placeholder="Buscar por número, tipo o descripción…"
+              placeholder="Buscar por número, apellidos, categoría…"
               value={busqueda}
               onChange={(e) => setBusqueda(e.target.value)}
               style={{ minWidth: 260 }}
@@ -128,6 +158,18 @@ export default function OrdenesTrabajo() {
               <option value="ENTREGADO">ENTREGADO</option>
               <option value="DEVUELTO">DEVUELTO</option>
               <option value="CERRADO">CERRADO</option>
+            </select>
+            <select
+              value={filtroCategoria}
+              onChange={(e) => setFiltroCategoria(e.target.value)}
+              data-filtro-categoria
+            >
+              <option value="">Todas las categorías</option>
+              {categorias.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.nombre}
+                </option>
+              ))}
             </select>
           </div>
           <span style={{ color: 'var(--muted)', fontSize: 13 }}>
@@ -143,7 +185,8 @@ export default function OrdenesTrabajo() {
               <tr>
                 <th>#</th>
                 <th>Tipo</th>
-                <th>Descripción</th>
+                <th>Apellidos y nombre</th>
+                <th>Categoría</th>
                 <th>Estado</th>
                 <th>Ubicación</th>
                 <th>Registro</th>
@@ -155,7 +198,8 @@ export default function OrdenesTrabajo() {
                 <tr key={o.id}>
                   <td data-label="#">#{o.numeroOT}</td>
                   <td data-label="Tipo">{o.tipoOT?.nombre}</td>
-                  <td data-label="Descripción">{o.descripcion || '—'}</td>
+                  <td data-label="Apellidos y nombre">{o.apellidosNombre || '—'}</td>
+                  <td data-label="Categoría">{o.categoria?.nombre || '—'}</td>
                   <td data-label="Estado">
                     <span className={`badge badge-${o.estado?.nombre.toLowerCase()}`}>
                       {o.estado?.nombre}
@@ -221,6 +265,34 @@ export default function OrdenesTrabajo() {
                 />
               </div>
             </div>
+            <div className="fila">
+              <div>
+                <label>Apellidos y nombre</label>
+                <input
+                  type="text"
+                  value={form.apellidosNombre}
+                  onChange={(e) => setForm({ ...form, apellidosNombre: e.target.value })}
+                  required
+                />
+              </div>
+              <div>
+                <label>Categoría</label>
+                <select
+                  value={form.categoriaId}
+                  onChange={(e) => setForm({ ...form, categoriaId: e.target.value })}
+                  required
+                >
+                  <option value="">Seleccione…</option>
+                  {categorias
+                    .filter((c) => c.activo)
+                    .map((c) => (
+                      <option key={c.id} value={c.id}>
+                        {c.nombre}
+                      </option>
+                    ))}
+                </select>
+              </div>
+            </div>
             <div>
               <label>Descripción</label>
               <textarea
@@ -279,6 +351,34 @@ export default function OrdenesTrabajo() {
                 />
               </div>
             </div>
+            <div className="fila">
+              <div>
+                <label>Apellidos y nombre</label>
+                <input
+                  type="text"
+                  value={formEdit.apellidosNombre}
+                  onChange={(e) => setFormEdit({ ...formEdit, apellidosNombre: e.target.value })}
+                  required
+                />
+              </div>
+              <div>
+                <label>Categoría</label>
+                <select
+                  value={formEdit.categoriaId}
+                  onChange={(e) => setFormEdit({ ...formEdit, categoriaId: e.target.value })}
+                  required
+                >
+                  <option value="">Seleccione…</option>
+                  {categorias
+                    .filter((c) => c.activo || String(c.id) === formEdit.categoriaId)
+                    .map((c) => (
+                      <option key={c.id} value={c.id}>
+                        {c.nombre}
+                      </option>
+                    ))}
+                </select>
+              </div>
+            </div>
             <div>
               <label>Descripción</label>
               <textarea
@@ -309,6 +409,18 @@ export default function OrdenesTrabajo() {
           onCerrar={() => setHistorial(null)}
         >
           <div className="detalle-grid">
+            <div className="detalle-item">
+              <div className="etiqueta">Apellidos y nombre</div>
+              <div className="valor">{historial.orden.apellidosNombre || '—'}</div>
+            </div>
+            <div className="detalle-item">
+              <div className="etiqueta">Categoría</div>
+              <div className="valor">{historial.orden.categoria?.nombre || '—'}</div>
+            </div>
+            <div className="detalle-item">
+              <div className="etiqueta">Descripción</div>
+              <div className="valor">{historial.orden.descripcion || '—'}</div>
+            </div>
             <div className="detalle-item">
               <div className="etiqueta">Estado actual</div>
               <div className="valor">{historial.orden.estado?.nombre}</div>

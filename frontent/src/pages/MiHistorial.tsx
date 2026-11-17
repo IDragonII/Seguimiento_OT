@@ -16,7 +16,9 @@ interface OTRef {
   numeroOT?: number
   tipoOT?: { id?: number; nombre?: string }
   estado?: { nombre?: string }
-  descripcion?: string
+  apellidosNombre?: string | null
+  descripcion?: string | null
+  categoria?: { id?: number; nombre?: string } | null
   ubicacion?: string
   fechaRegistro?: string
 }
@@ -206,6 +208,8 @@ function DetalleMovimiento({ mov, onCerrar }: { mov: MovHistorial; onCerrar: () 
         <dl className="mb-4">
           <Fila label="Nº de OT" valor={ot?.numeroOT ? `#${ot.numeroOT}` : undefined} />
           <Fila label="Tipo" valor={ot?.tipoOT?.nombre} />
+          <Fila label="Apellidos y nombre" valor={ot?.apellidosNombre} />
+          <Fila label="Categoría" valor={ot?.categoria?.nombre} />
           <Fila label="Descripción" valor={ot?.descripcion} />
           <Fila label="Ubicación" valor={ot?.ubicacion} />
           <Fila label="Estado actual" valor={ot?.estado?.nombre} />
