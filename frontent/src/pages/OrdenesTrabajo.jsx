@@ -5,6 +5,7 @@ import Modal from '../components/Modal'
 export default function OrdenesTrabajo() {
   const usuario = api.getUsuario()
   const puedeCrear = ['ADMIN', 'FACTIBILIZADOR'].includes(usuario.rol)
+  const puedeEditar = puedeCrear
 
   const [ordenes, setOrdenes] = useState([])
   const [tipos, setTipos] = useState([])
@@ -16,6 +17,9 @@ export default function OrdenesTrabajo() {
   const [form, setForm] = useState({ tipoOTId: '', numeroOT: '', descripcion: '' })
   const [formAbierto, setFormAbierto] = useState(false)
   const [mensajeOk, setMensajeOk] = useState('')
+
+  const [editando, setEditando] = useState(null)
+  const [formEdit, setFormEdit] = useState({ tipoOTId: '', numeroOT: '', descripcion: '' })
 
   function cargar() {
     api
@@ -54,6 +58,33 @@ export default function OrdenesTrabajo() {
     try {
       const hist = await api.get(`/ordenes-trabajo/${orden.id}/historial`)
       setHistorial({ orden, hist })
+    } catch (err) {
+      setError(err.message)
+    }
+  }
+
+  function abrirEdicion(orden) {
+    setFormEdit({
+      tipoOTId: String(orden.tipoOT?.id ?? ''),
+      numeroOT: String(orden.numeroOT ?? ''),
+      descripcion: orden.descripcion ?? '',
+    })
+    setEditando(orden)
+  }
+
+  async function guardarEdicion(e) {
+    e.preventDefault()
+    setError('')
+    setMensajeOk('')
+    try {
+      await api.put(`/ordenes-trabajo/${editando.id}`, {
+        tipoOTId: Number(formEdit.tipoOTId),
+        numeroOT: Number(formEdit.numeroOT),
+        descripcion: formEdit.descripcion,
+      })
+      setMensajeOk(`OT #${editando.numeroOT} actualizada`)
+      setEditando(null)
+      cargar()
     } catch (err) {
       setError(err.message)
     }
@@ -133,6 +164,15 @@ export default function OrdenesTrabajo() {
                   <td data-label="Ubicación">{o.ubicacion || '—'}</td>
                   <td data-label="Registro">{new Date(o.fechaRegistro).toLocaleDateString()}</td>
                   <td data-label="">
+                    {puedeEditar && (
+                      <button
+                        className="btn btn-secundario btn-chico"
+                        style={{ marginRight: 6 }}
+                        onClick={() => abrirEdicion(o)}
+                      >
+                        Editar
+                      </button>
+                    )}
                     <button
                       className="btn btn-secundario btn-chico"
                       onClick={() => verHistorial(o)}
@@ -197,6 +237,64 @@ export default function OrdenesTrabajo() {
                 className="btn btn-secundario"
                 type="button"
                 onClick={() => setFormAbierto(false)}
+              >
+                Cancelar
+              </button>
+            </div>
+          </form>
+        </Modal>
+      )}
+
+      {editando && (
+        <Modal
+          titulo={`Editar OT #${editando.numeroOT} (${editando.tipoOT?.nombre})`}
+          onCerrar={() => setEditando(null)}
+          ancho={560}
+        >
+          <form className="formulario" onSubmit={guardarEdicion}>
+            <div className="fila">
+              <div>
+                <label>Tipo de OT</label>
+                <select
+                  value={formEdit.tipoOTId}
+                  onChange={(e) => setFormEdit({ ...formEdit, tipoOTId: e.target.value })}
+                  required
+                >
+                  <option value="">Seleccione…</option>
+                  {tipos.map((t) => (
+                    <option key={t.id} value={t.id}>
+                      {t.nombre}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label>Número de OT</label>
+                <input
+                  type="number"
+                  min="1"
+                  value={formEdit.numeroOT}
+                  onChange={(e) => setFormEdit({ ...formEdit, numeroOT: e.target.value })}
+                  required
+                />
+              </div>
+            </div>
+            <div>
+              <label>Descripción</label>
+              <textarea
+                rows="3"
+                value={formEdit.descripcion}
+                onChange={(e) => setFormEdit({ ...formEdit, descripcion: e.target.value })}
+              />
+            </div>
+            <div className="acciones">
+              <button className="btn" type="submit">
+                Guardar cambios
+              </button>
+              <button
+                className="btn btn-secundario"
+                type="button"
+                onClick={() => setEditando(null)}
               >
                 Cancelar
               </button>

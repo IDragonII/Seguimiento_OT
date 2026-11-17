@@ -6,6 +6,7 @@ import {
   LayoutGrid,
   List,
   PackageCheck,
+  Pencil,
   Plus,
   Search,
 } from 'lucide-react'
@@ -48,13 +49,18 @@ interface MovHistorial {
 
 const ACCIONES: Record<string, string> = {
   REGISTRO: 'Registro de la OT',
+  EDICION: 'Edición de la OT',
   ENTREGA: 'Entrega al técnico',
   SOLICITUD_DEVOLUCION: 'Solicitud de devolución',
   CONFIRMACION_RECEPCION: 'Confirmación de recepción',
   ALERTA_VENCIMIENTO: 'Alerta de vencimiento',
 }
 
-type ModalState = { tipo: 'detalle'; id: number } | { tipo: 'nueva' } | null
+type ModalState =
+  | { tipo: 'detalle'; id: number }
+  | { tipo: 'nueva' }
+  | { tipo: 'editar'; id: number }
+  | null
 
 function fechaCorta(iso?: string | null): string | undefined {
   if (!iso) return undefined
@@ -141,7 +147,17 @@ function BadgeEstado({ estado }: { estado: string }) {
   )
 }
 
-function ModalDetalle({ ot, onCerrar }: { ot: OT; onCerrar: () => void }) {
+function ModalDetalle({
+  ot,
+  puedeEditar,
+  onEditar,
+  onCerrar,
+}: {
+  ot: OT
+  puedeEditar: boolean
+  onEditar: () => void
+  onCerrar: () => void
+}) {
   const [hist, setHist] = useState<MovHistorial[] | null>(null)
   const [histError, setHistError] = useState('')
 
@@ -173,7 +189,20 @@ function ModalDetalle({ ot, onCerrar }: { ot: OT; onCerrar: () => void }) {
           <span className="text-sm font-semibold" style={{ color: col.texto }}>
             {ot.tipoOT?.nombre || 'Sin tipo'}
           </span>
-          <BadgeEstado estado={estado} />
+          <div className="flex items-center gap-2">
+            <BadgeEstado estado={estado} />
+            {puedeEditar && (
+              <button
+                type="button"
+                data-ot-editar
+                onClick={onEditar}
+                className="inline-flex items-center gap-1 rounded-lg border border-[#E4E8EE] bg-white px-2.5 py-1.5 text-xs font-semibold text-[#18283E] transition hover:border-[#3478C7] hover:text-[#3478C7] focus:outline-none focus:ring-2 focus:ring-[#3478C7]/40"
+              >
+                <Pencil size={13} aria-hidden="true" />
+                Editar
+              </button>
+            )}
+          </div>
         </div>
 
         {ot.descripcion && (
@@ -346,12 +375,134 @@ function ModalNueva({
   )
 }
 
+function ModalEditar({
+  ot,
+  tipos,
+  onCerrar,
+  onGuardada,
+}: {
+  ot: OT
+  tipos: TipoOT[]
+  onCerrar: () => void
+  onGuardada: (ot: OT) => void
+}) {
+  const [tipoOTId, setTipoOTId] = useState(String(ot.tipoOT?.id ?? ''))
+  const [numeroOT, setNumeroOT] = useState(ot.numeroOT != null ? String(ot.numeroOT) : '')
+  const [descripcion, setDescripcion] = useState(ot.descripcion ?? '')
+  const [error, setError] = useState('')
+  const [enviando, setEnviando] = useState(false)
+
+  async function enviar() {
+    if (!tipoOTId) {
+      setError('Selecciona el tipo de OT')
+      return
+    }
+    if (!numeroOT || Number(numeroOT) < 1) {
+      setError('Indica el número de OT')
+      return
+    }
+    setEnviando(true)
+    setError('')
+    try {
+      const res = await api.put(`/ordenes-trabajo/${ot.id}`, {
+        tipoOTId: Number(tipoOTId),
+        numeroOT: Number(numeroOT),
+        descripcion,
+      })
+      onGuardada(res as OT)
+    } catch (err) {
+      setError((err as Error).message || 'No se pudo guardar la OT')
+      setEnviando(false)
+    }
+  }
+
+  return (
+    <Modal titulo={`Editar OT #${ot.numeroOT ?? ''}`} ancho={520} onCerrar={onCerrar}>
+      <div data-editar-form className="space-y-3">
+        <p className="text-sm text-[#55657A]">
+          El número de OT debe ser único por tipo. El estado y la ubicación los
+          gestionan las entregas.
+        </p>
+        <div className="grid gap-3 sm:grid-cols-2">
+          <label className="block">
+            <span className="text-xs font-semibold uppercase tracking-wide text-[#718096]">
+              Tipo de OT
+            </span>
+            <select
+              data-editar-tipo
+              value={tipoOTId}
+              onChange={(e) => setTipoOTId(e.target.value)}
+              className="mt-1 w-full rounded-lg border border-[#E4E8EE] bg-white px-3 py-2 text-sm text-[#18283E] outline-none focus:border-[#3478C7] focus:ring-2 focus:ring-[#3478C7]/25"
+            >
+              <option value="">Seleccione…</option>
+              {tipos.map((t) => (
+                <option key={t.id} value={t.id}>
+                  {t.nombre}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="block">
+            <span className="text-xs font-semibold uppercase tracking-wide text-[#718096]">
+              Número de OT
+            </span>
+            <input
+              data-editar-numero
+              type="number"
+              min="1"
+              value={numeroOT}
+              onChange={(e) => setNumeroOT(e.target.value)}
+              className="mt-1 w-full rounded-lg border border-[#E4E8EE] px-3 py-2 text-sm text-[#18283E] outline-none focus:border-[#3478C7] focus:ring-2 focus:ring-[#3478C7]/25"
+            />
+          </label>
+        </div>
+        <label className="block">
+          <span className="text-xs font-semibold uppercase tracking-wide text-[#718096]">
+            Descripción (opcional)
+          </span>
+          <textarea
+            data-editar-descripcion
+            rows={3}
+            value={descripcion}
+            onChange={(e) => setDescripcion(e.target.value)}
+            placeholder="Trabajo a realizar…"
+            className="mt-1 w-full rounded-lg border border-[#E4E8EE] px-3 py-2 text-sm text-[#18283E] outline-none focus:border-[#3478C7] focus:ring-2 focus:ring-[#3478C7]/25"
+          />
+        </label>
+        {error && (
+          <div
+            data-editar-error
+            className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-700"
+          >
+            {error}
+          </div>
+        )}
+        <div className="flex justify-end gap-2 pt-1">
+          <button type="button" data-editar-cancelar className="btn-secundario" onClick={onCerrar}>
+            Cancelar
+          </button>
+          <button
+            type="button"
+            data-editar-enviar
+            className="btn"
+            disabled={enviando}
+            onClick={enviar}
+          >
+            {enviando ? 'Guardando…' : 'Guardar cambios'}
+          </button>
+        </div>
+      </div>
+    </Modal>
+  )
+}
+
 const CLASE_VISTA =
   'inline-flex items-center gap-1.5 rounded-lg px-3 py-2 text-sm font-semibold transition focus:outline-none focus:ring-2 focus:ring-[#3478C7]/40'
 
 export default function OrdenesTrabajoPanel() {
   const usuario = api.getUsuario()
   const puedeCrear = usuario?.rol === 'FACTIBILIZADOR'
+  const puedeEditar = ['ADMIN', 'FACTIBILIZADOR'].includes(usuario?.rol ?? '')
 
   const [ots, setOts] = useState<OT[] | null>(null)
   const [tipos, setTipos] = useState<TipoOT[]>([])
@@ -406,7 +557,9 @@ export default function OrdenesTrabajoPanel() {
   const vaciaTotal = lista.length === 0
   const vaciaFiltrada = !vaciaTotal && visibles.length === 0
   const otModal =
-    modal?.tipo === 'detalle' ? lista.find((o) => o.id === modal.id) ?? null : null
+    modal?.tipo === 'detalle' || modal?.tipo === 'editar'
+      ? lista.find((o) => o.id === modal.id) ?? null
+      : null
 
   async function trasCrear(res: OT) {
     await recargar()
@@ -688,7 +841,23 @@ export default function OrdenesTrabajoPanel() {
         />
       )}
       {modal?.tipo === 'detalle' && otModal && (
-        <ModalDetalle ot={otModal} onCerrar={() => setModal(null)} />
+        <ModalDetalle
+          ot={otModal}
+          puedeEditar={puedeEditar}
+          onEditar={() => setModal({ tipo: 'editar', id: otModal.id })}
+          onCerrar={() => setModal(null)}
+        />
+      )}
+      {modal?.tipo === 'editar' && otModal && (
+        <ModalEditar
+          ot={otModal}
+          tipos={tipos}
+          onCerrar={() => setModal({ tipo: 'detalle', id: modal.id })}
+          onGuardada={async () => {
+            await recargar()
+            setModal({ tipo: 'detalle', id: modal.id })
+          }}
+        />
       )}
     </main>
   )
