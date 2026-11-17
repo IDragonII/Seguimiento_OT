@@ -6,6 +6,7 @@ import OrdenesTrabajo from './pages/OrdenesTrabajo'
 import Entregas from './pages/Entregas'
 import Usuarios from './pages/Usuarios'
 import Categorias from './pages/Categorias'
+import Materiales from './pages/Materiales'
 import Configuracion from './pages/Configuracion'
 import Alertas from './pages/Alertas'
 import PanelLayout from './layouts/PanelLayout'
@@ -21,6 +22,7 @@ import ModuloProximamente from './components/panel/ModuloProximamente'
 const ROLES_POR_RUTA = {
   '/usuarios': ['ADMIN'],
   '/categorias': ['ADMIN'],
+  '/materiales': ['ADMIN'],
   '/configuracion': ['ADMIN'],
   '/entregas': ['ADMIN'],
   '/ot-por-tecnico': ['ADMIN'],
@@ -126,6 +128,14 @@ function App() {
             element={
               <RequireAuth roles={ROLES_POR_RUTA['/categorias']}>
                 <Categorias />
+              </RequireAuth>
+            }
+          />
+          <Route
+            path="/materiales"
+            element={
+              <RequireAuth roles={ROLES_POR_RUTA['/materiales']}>
+                <Materiales />
               </RequireAuth>
             }
           />

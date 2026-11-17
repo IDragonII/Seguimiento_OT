@@ -84,6 +84,19 @@ INSERT INTO categorias_ot (nombre) VALUES
 ('Trifásica');
 
 -- =====================================================
+-- 3c. MATERIALES
+-- =====================================================
+
+CREATE TABLE materiales (
+    id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+
+    nombre VARCHAR(150) NOT NULL UNIQUE,
+    unidad_medida VARCHAR(30),
+
+    activo BOOLEAN NOT NULL DEFAULT TRUE
+);
+
+-- =====================================================
 -- 4. ESTADOS DE OT
 -- =====================================================
 
@@ -146,7 +159,7 @@ CREATE TABLE ordenes_trabajo (
         UNIQUE(tipo_ot_id, numero_ot),
 
     CONSTRAINT chk_numero_ot
-        CHECK(numero_ot  0)
+        CHECK(numero_ot > 0)
 );
 
 CREATE INDEX idx_ordenes_estado
@@ -157,6 +170,21 @@ ON ordenes_trabajo(tipo_ot_id, numero_ot);
 
 CREATE INDEX idx_ordenes_fecha_estado
 ON ordenes_trabajo(fecha_inicio_estado);
+
+CREATE TABLE orden_materiales (
+    id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+
+    orden_trabajo_id BIGINT NOT NULL
+        REFERENCES ordenes_trabajo(id) ON DELETE CASCADE,
+
+    material_id BIGINT NOT NULL
+        REFERENCES materiales(id),
+
+    cantidad NUMERIC(12,2) NOT NULL CHECK (cantidad > 0),
+
+    CONSTRAINT uq_orden_material
+        UNIQUE(orden_trabajo_id, material_id)
+);
 
 -- =====================================================
 -- 6. PROGRAMACIONES

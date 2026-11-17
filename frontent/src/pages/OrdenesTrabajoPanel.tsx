@@ -32,6 +32,19 @@ interface CategoriaOT {
   activo?: boolean
 }
 
+interface MaterialCat {
+  id: number
+  nombre: string
+  unidadMedida?: string | null
+  activo?: boolean
+}
+
+interface MaterialAsign {
+  id?: number
+  cantidad?: number
+  material?: { id?: number; nombre?: string; unidadMedida?: string | null }
+}
+
 interface OT {
   id: number
   numeroOT?: number
@@ -40,6 +53,7 @@ interface OT {
   apellidosNombre?: string | null
   descripcion?: string | null
   categoria?: { id?: number; nombre?: string } | null
+  materiales?: MaterialAsign[]
   ubicacion?: string
   fechaRegistro?: string
   registradoPor?: UsuarioRef | null
@@ -58,6 +72,7 @@ interface MovHistorial {
 const ACCIONES: Record<string, string> = {
   REGISTRO: 'Registro de la OT',
   EDICION: 'Edición de la OT',
+  MATERIALES: 'Actualización de materiales',
   ENTREGA: 'Entrega al técnico',
   SOLICITUD_DEVOLUCION: 'Solicitud de devolución',
   CONFIRMACION_RECEPCION: 'Confirmación de recepción',
@@ -68,6 +83,7 @@ type ModalState =
   | { tipo: 'detalle'; id: number }
   | { tipo: 'nueva' }
   | { tipo: 'editar'; id: number }
+  | { tipo: 'materiales'; id: number }
   | null
 
 function fechaCorta(iso?: string | null): string | undefined {
@@ -159,11 +175,13 @@ function ModalDetalle({
   ot,
   puedeEditar,
   onEditar,
+  onMateriales,
   onCerrar,
 }: {
   ot: OT
   puedeEditar: boolean
   onEditar: () => void
+  onMateriales: () => void
   onCerrar: () => void
 }) {
   const [hist, setHist] = useState<MovHistorial[] | null>(null)
@@ -200,15 +218,26 @@ function ModalDetalle({
           <div className="flex items-center gap-2">
             <BadgeEstado estado={estado} />
             {puedeEditar && (
-              <button
-                type="button"
-                data-ot-editar
-                onClick={onEditar}
-                className="inline-flex items-center gap-1 rounded-lg border border-[#E4E8EE] bg-white px-2.5 py-1.5 text-xs font-semibold text-[#18283E] transition hover:border-[#3478C7] hover:text-[#3478C7] focus:outline-none focus:ring-2 focus:ring-[#3478C7]/40"
-              >
-                <Pencil size={13} aria-hidden="true" />
-                Editar
-              </button>
+              <>
+                <button
+                  type="button"
+                  data-ot-materiales
+                  onClick={onMateriales}
+                  className="inline-flex items-center gap-1 rounded-lg border border-[#E4E8EE] bg-white px-2.5 py-1.5 text-xs font-semibold text-[#18283E] transition hover:border-[#3478C7] hover:text-[#3478C7] focus:outline-none focus:ring-2 focus:ring-[#3478C7]/40"
+                >
+                  <PackageCheck size={13} aria-hidden="true" />
+                  Materiales
+                </button>
+                <button
+                  type="button"
+                  data-ot-editar
+                  onClick={onEditar}
+                  className="inline-flex items-center gap-1 rounded-lg border border-[#E4E8EE] bg-white px-2.5 py-1.5 text-xs font-semibold text-[#18283E] transition hover:border-[#3478C7] hover:text-[#3478C7] focus:outline-none focus:ring-2 focus:ring-[#3478C7]/40"
+                >
+                  <Pencil size={13} aria-hidden="true" />
+                  Editar
+                </button>
+              </>
             )}
           </div>
         </div>
@@ -225,6 +254,21 @@ function ModalDetalle({
           <Fila label="Tipo" valor={ot.tipoOT?.nombre} />
           <Fila label="Categoría" valor={ot.categoria?.nombre} />
           <Fila label="Descripción" valor={ot.descripcion} />
+          <Fila
+            label="Materiales"
+            valor={
+              ot.materiales && ot.materiales.length > 0
+                ? ot.materiales
+                    .map(
+                      (m) =>
+                        `${m.material?.nombre ?? '—'} × ${m.cantidad ?? '—'}${
+                          m.material?.unidadMedida ? ` ${m.material.unidadMedida}` : ''
+                        }`
+                    )
+                    .join(', ')
+                : undefined
+            }
+          />
           <Fila label="Estado" valor={estado} />
           <Fila label="Ubicación actual" valor={ot.ubicacion} />
           <Fila label="Registrada por" valor={nombreDe(ot.registradoPor)} />
@@ -601,6 +645,209 @@ function ModalEditar({
 const CLASE_VISTA =
   'inline-flex items-center gap-1.5 rounded-lg px-3 py-2 text-sm font-semibold transition focus:outline-none focus:ring-2 focus:ring-[#3478C7]/40'
 
+const CLASE_INPUT =
+  'w-full rounded-lg border border-[#E4E8EE] px-3 py-2 text-sm text-[#18283E] outline-none focus:border-[#3478C7] focus:ring-2 focus:ring-[#3478C7]/25'
+
+function ModalMateriales({
+  ot,
+  onCerrar,
+  onGuardada,
+}: {
+  ot: OT
+  onCerrar: () => void
+  onGuardada: (ot: OT) => void
+}) {
+  const [catalogo, setCatalogo] = useState<MaterialCat[]>([])
+  const [filas, setFilas] = useState<{ materialId: string; cantidad: string }[]>(
+    (ot.materiales ?? []).map((m) => ({
+      materialId: String(m.material?.id ?? ''),
+      cantidad: String(m.cantidad ?? ''),
+    }))
+  )
+  const [nuevoId, setNuevoId] = useState('')
+  const [nuevaCantidad, setNuevaCantidad] = useState('')
+  const [error, setError] = useState('')
+  const [enviando, setEnviando] = useState(false)
+
+  useEffect(() => {
+    api
+      .get('/materiales')
+      .then((lista: MaterialCat[]) => setCatalogo(lista))
+      .catch(() => setCatalogo([]))
+  }, [])
+
+  const enUso = new Set(filas.map((f) => f.materialId))
+  const disponibles = catalogo.filter((m) => m.activo && !enUso.has(String(m.id)))
+
+  function agregar() {
+    if (!nuevoId) {
+      setError('Selecciona un material')
+      return
+    }
+    const cant = Number(nuevaCantidad)
+    if (!nuevaCantidad || Number.isNaN(cant) || cant <= 0) {
+      setError('Indica una cantidad mayor que cero')
+      return
+    }
+    setError('')
+    setFilas([...filas, { materialId: nuevoId, cantidad: nuevaCantidad }])
+    setNuevoId('')
+    setNuevaCantidad('')
+  }
+
+  function quitar(idx: number) {
+    setFilas(filas.filter((_, i) => i !== idx))
+  }
+
+  async function guardar() {
+    for (const f of filas) {
+      const cant = Number(f.cantidad)
+      if (!f.materialId || Number.isNaN(cant) || cant <= 0) {
+        setError('Revisa las cantidades: deben ser mayores que cero')
+        return
+      }
+    }
+    setEnviando(true)
+    setError('')
+    try {
+      const res = await api.put(`/ordenes-trabajo/${ot.id}/materiales`, {
+        materiales: filas.map((f) => ({
+          materialId: Number(f.materialId),
+          cantidad: Number(f.cantidad),
+        })),
+      })
+      onGuardada(res as OT)
+    } catch (err) {
+      setError((err as Error).message || 'No se pudieron guardar los materiales')
+      setEnviando(false)
+    }
+  }
+
+  return (
+    <Modal titulo={`Materiales — OT #${ot.numeroOT ?? ''}`} ancho={560} onCerrar={onCerrar}>
+      <div data-mat-modal className="space-y-3">
+        <p className="text-sm text-[#55657A]">
+          Agrega los materiales y cantidades necesarios para esta OT.
+        </p>
+
+        <div className="rounded-lg border border-[#E4E8EE]">
+          {filas.length === 0 && (
+            <p className="px-3 py-4 text-center text-xs text-[#718096]">
+              Sin materiales asignados.
+            </p>
+          )}
+          {filas.map((f, idx) => {
+            const mat = catalogo.find((m) => String(m.id) === f.materialId)
+            return (
+              <div
+                key={idx}
+                data-mat-fila={idx}
+                className="flex items-center gap-2 border-b border-[#EEF1F5] px-3 py-2 last:border-b-0"
+              >
+                <span className="min-w-0 flex-1 truncate text-sm text-[#18283E]">
+                  {mat?.nombre ?? 'Material'}
+                  {mat?.unidadMedida ? (
+                    <span className="text-[#718096]"> ({mat.unidadMedida})</span>
+                  ) : null}
+                </span>
+                <input
+                  data-mat-cantidad={idx}
+                  type="number"
+                  min="0.01"
+                  step="any"
+                  value={f.cantidad}
+                  onChange={(e) => {
+                    const copia = [...filas]
+                    copia[idx] = { ...copia[idx], cantidad: e.target.value }
+                    setFilas(copia)
+                  }}
+                  className="w-24 rounded-lg border border-[#E4E8EE] px-2 py-1.5 text-sm text-[#18283E] outline-none focus:border-[#3478C7]"
+                />
+                <button
+                  type="button"
+                  data-mat-quitar={idx}
+                  onClick={() => quitar(idx)}
+                  className="rounded-lg border border-[#E4E8EE] bg-white px-2 py-1.5 text-xs font-semibold text-[#718096] transition hover:border-red-300 hover:text-red-600"
+                >
+                  Quitar
+                </button>
+              </div>
+            )
+          })}
+        </div>
+
+        <div className="flex items-end gap-2">
+          <label className="block min-w-0 flex-1">
+            <span className="text-xs font-semibold uppercase tracking-wide text-[#718096]">
+              Material
+            </span>
+            <select
+              data-mat-select
+              value={nuevoId}
+              onChange={(e) => setNuevoId(e.target.value)}
+              className={`${CLASE_INPUT} mt-1`}
+            >
+              <option value="">Seleccione…</option>
+              {disponibles.map((m) => (
+                <option key={m.id} value={String(m.id)}>
+                  {m.nombre}
+                  {m.unidadMedida ? ` (${m.unidadMedida})` : ''}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="block w-28">
+            <span className="text-xs font-semibold uppercase tracking-wide text-[#718096]">
+              Cantidad
+            </span>
+            <input
+              data-mat-add-cantidad
+              type="number"
+              min="0.01"
+              step="any"
+              value={nuevaCantidad}
+              onChange={(e) => setNuevaCantidad(e.target.value)}
+              className={`${CLASE_INPUT} mt-1`}
+            />
+          </label>
+          <button
+            type="button"
+            data-mat-agregar
+            onClick={agregar}
+            className="mb-0.5 shrink-0 rounded-lg border border-[#3478C7] px-3 py-2 text-sm font-semibold text-[#3478C7] transition hover:bg-[#F0F5FB]"
+          >
+            Agregar
+          </button>
+        </div>
+
+        {error && (
+          <div
+            data-mat-error
+            className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-700"
+          >
+            {error}
+          </div>
+        )}
+
+        <div className="flex justify-end gap-2 pt-1">
+          <button type="button" data-mat-cancelar className="btn-secundario" onClick={onCerrar}>
+            Cancelar
+          </button>
+          <button
+            type="button"
+            data-mat-guardar
+            className="btn"
+            disabled={enviando}
+            onClick={guardar}
+          >
+            {enviando ? 'Guardando…' : 'Guardar materiales'}
+          </button>
+        </div>
+      </div>
+    </Modal>
+  )
+}
+
 export default function OrdenesTrabajoPanel() {
   const usuario = api.getUsuario()
   const puedeCrear = usuario?.rol === 'FACTIBILIZADOR'
@@ -668,7 +915,7 @@ export default function OrdenesTrabajoPanel() {
   const vaciaTotal = lista.length === 0
   const vaciaFiltrada = !vaciaTotal && visibles.length === 0
   const otModal =
-    modal?.tipo === 'detalle' || modal?.tipo === 'editar'
+    modal?.tipo === 'detalle' || modal?.tipo === 'editar' || modal?.tipo === 'materiales'
       ? lista.find((o) => o.id === modal.id) ?? null
       : null
 
@@ -975,7 +1222,18 @@ export default function OrdenesTrabajoPanel() {
           ot={otModal}
           puedeEditar={puedeEditar}
           onEditar={() => setModal({ tipo: 'editar', id: otModal.id })}
+          onMateriales={() => setModal({ tipo: 'materiales', id: otModal.id })}
           onCerrar={() => setModal(null)}
+        />
+      )}
+      {modal?.tipo === 'materiales' && otModal && (
+        <ModalMateriales
+          ot={otModal}
+          onCerrar={() => setModal({ tipo: 'detalle', id: modal.id })}
+          onGuardada={async () => {
+            await recargar()
+            setModal({ tipo: 'detalle', id: modal.id })
+          }}
         />
       )}
       {modal?.tipo === 'editar' && otModal && (

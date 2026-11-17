@@ -10,11 +10,19 @@ export default function OrdenesTrabajo() {
   const [ordenes, setOrdenes] = useState([])
   const [tipos, setTipos] = useState([])
   const [categorias, setCategorias] = useState([])
+  const [catalogoMateriales, setCatalogoMateriales] = useState([])
   const [error, setError] = useState('')
   const [busqueda, setBusqueda] = useState('')
   const [filtroEstado, setFiltroEstado] = useState('')
   const [filtroCategoria, setFiltroCategoria] = useState('')
   const [historial, setHistorial] = useState(null)
+
+  const [materialesEdit, setMaterialesEdit] = useState(null)
+  const [matFilas, setMatFilas] = useState([])
+  const [matNuevoId, setMatNuevoId] = useState('')
+  const [matNuevaCantidad, setMatNuevaCantidad] = useState('')
+  const [matError, setMatError] = useState('')
+  const [matEnviando, setMatEnviando] = useState(false)
 
   const [form, setForm] = useState({
     tipoOTId: '',
@@ -45,6 +53,7 @@ export default function OrdenesTrabajo() {
   useEffect(() => {
     cargar()
     api.get('/categorias').then(setCategorias).catch(() => setCategorias([]))
+    api.get('/materiales').then(setCatalogoMateriales).catch(() => setCatalogoMateriales([]))
     if (puedeCrear) {
       api.get('/tipos-ot').then(setTipos).catch(() => setTipos([]))
     }
@@ -83,6 +92,63 @@ export default function OrdenesTrabajo() {
       setHistorial({ orden, hist })
     } catch (err) {
       setError(err.message)
+    }
+  }
+
+  function abrirMateriales(orden) {
+    setMaterialesEdit(orden)
+    setMatFilas(
+      (orden.materiales ?? []).map((m) => ({
+        materialId: String(m.material?.id ?? ''),
+        cantidad: String(m.cantidad ?? ''),
+      }))
+    )
+    setMatNuevoId('')
+    setMatNuevaCantidad('')
+    setMatError('')
+  }
+
+  function agregarMaterial() {
+    if (!matNuevoId) {
+      setMatError('Selecciona un material')
+      return
+    }
+    const cant = Number(matNuevaCantidad)
+    if (!matNuevaCantidad || Number.isNaN(cant) || cant <= 0) {
+      setMatError('Indica una cantidad mayor que cero')
+      return
+    }
+    setMatError('')
+    setMatFilas([...matFilas, { materialId: matNuevoId, cantidad: matNuevaCantidad }])
+    setMatNuevoId('')
+    setMatNuevaCantidad('')
+  }
+
+  async function guardarMateriales(e) {
+    e.preventDefault()
+    setMatError('')
+    for (const f of matFilas) {
+      const cant = Number(f.cantidad)
+      if (!f.materialId || Number.isNaN(cant) || cant <= 0) {
+        setMatError('Revisa las cantidades: deben ser mayores que cero')
+        return
+      }
+    }
+    setMatEnviando(true)
+    try {
+      await api.put(`/ordenes-trabajo/${materialesEdit.id}/materiales`, {
+        materiales: matFilas.map((f) => ({
+          materialId: Number(f.materialId),
+          cantidad: Number(f.cantidad),
+        })),
+      })
+      setMensajeOk(`Materiales de la OT #${materialesEdit.numeroOT} actualizados`)
+      setMaterialesEdit(null)
+      cargar()
+    } catch (err) {
+      setMatError(err.message)
+    } finally {
+      setMatEnviando(false)
     }
   }
 
@@ -209,13 +275,22 @@ export default function OrdenesTrabajo() {
                   <td data-label="Registro">{new Date(o.fechaRegistro).toLocaleDateString()}</td>
                   <td data-label="">
                     {puedeEditar && (
-                      <button
-                        className="btn btn-secundario btn-chico"
-                        style={{ marginRight: 6 }}
-                        onClick={() => abrirEdicion(o)}
-                      >
-                        Editar
-                      </button>
+                      <>
+                        <button
+                          className="btn btn-secundario btn-chico"
+                          style={{ marginRight: 6 }}
+                          onClick={() => abrirMateriales(o)}
+                        >
+                          Materiales
+                        </button>
+                        <button
+                          className="btn btn-secundario btn-chico"
+                          style={{ marginRight: 6 }}
+                          onClick={() => abrirEdicion(o)}
+                        >
+                          Editar
+                        </button>
+                      </>
                     )}
                     <button
                       className="btn btn-secundario btn-chico"
@@ -403,6 +478,121 @@ export default function OrdenesTrabajo() {
         </Modal>
       )}
 
+      {materialesEdit && (
+        <Modal
+          titulo={`Materiales — OT #${materialesEdit.numeroOT}`}
+          onCerrar={() => setMaterialesEdit(null)}
+          ancho={560}
+        >
+          <form className="formulario" onSubmit={guardarMateriales}>
+            <p style={{ color: 'var(--muted)', fontSize: 13, marginBottom: 8 }}>
+              Agrega los materiales y cantidades necesarios para esta OT.
+            </p>
+
+            <div style={{ border: '1px solid var(--border)', borderRadius: 8, marginBottom: 12 }}>
+              {matFilas.length === 0 && (
+                <div style={{ color: 'var(--muted)', fontSize: 13, padding: '12px 14px' }}>
+                  Sin materiales asignados.
+                </div>
+              )}
+              {matFilas.map((f, idx) => {
+                const mat = catalogoMateriales.find((m) => String(m.id) === f.materialId)
+                return (
+                  <div
+                    key={idx}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 8,
+                      fontSize: 13,
+                      padding: '7px 10px',
+                      borderBottom: idx < matFilas.length - 1 ? '1px solid #f1f5f9' : 'none',
+                    }}
+                  >
+                    <span style={{ flex: 1, minWidth: 0 }}>
+                      {mat?.nombre ?? 'Material'}
+                      {mat?.unidadMedida ? ` (${mat.unidadMedida})` : ''}
+                    </span>
+                    <input
+                      type="number"
+                      min="0.01"
+                      step="any"
+                      value={f.cantidad}
+                      onChange={(e) => {
+                        const copia = [...matFilas]
+                        copia[idx] = { ...copia[idx], cantidad: e.target.value }
+                        setMatFilas(copia)
+                      }}
+                      style={{ width: 90, padding: '4px 6px' }}
+                    />
+                    <button
+                      type="button"
+                      className="btn btn-secundario btn-chico"
+                      onClick={() => setMatFilas(matFilas.filter((_, i) => i !== idx))}
+                    >
+                      Quitar
+                    </button>
+                  </div>
+                )
+              })}
+            </div>
+
+            <div className="fila">
+              <div>
+                <label>Material</label>
+                <select
+                  value={matNuevoId}
+                  onChange={(e) => setMatNuevoId(e.target.value)}
+                >
+                  <option value="">Seleccione…</option>
+                  {catalogoMateriales
+                    .filter(
+                      (m) =>
+                        m.activo && !matFilas.some((f) => f.materialId === String(m.id))
+                    )
+                    .map((m) => (
+                      <option key={m.id} value={m.id}>
+                        {m.nombre}
+                        {m.unidadMedida ? ` (${m.unidadMedida})` : ''}
+                      </option>
+                    ))}
+                </select>
+              </div>
+              <div>
+                <label>Cantidad</label>
+                <input
+                  type="number"
+                  min="0.01"
+                  step="any"
+                  value={matNuevaCantidad}
+                  onChange={(e) => setMatNuevaCantidad(e.target.value)}
+                />
+              </div>
+            </div>
+            <div className="acciones" style={{ marginBottom: 12 }}>
+              <button className="btn btn-secundario" type="button" onClick={agregarMaterial}>
+                Agregar
+              </button>
+            </div>
+
+            {matError && <div className="alerta-error">{matError}</div>}
+
+            <div className="acciones">
+              <button className="btn" type="submit" disabled={matEnviando}>
+                {matEnviando ? 'Guardando…' : 'Guardar materiales'}
+              </button>
+              <button
+                className="btn btn-secundario"
+                type="button"
+                onClick={() => setMaterialesEdit(null)}
+              >
+                Cancelar
+              </button>
+            </div>
+          </form>
+        </Modal>
+      )}
+
       {historial && (
         <Modal
           titulo={`Historial — OT #${historial.orden.numeroOT} (${historial.orden.tipoOT?.nombre})`}
@@ -420,6 +610,21 @@ export default function OrdenesTrabajo() {
             <div className="detalle-item">
               <div className="etiqueta">Descripción</div>
               <div className="valor">{historial.orden.descripcion || '—'}</div>
+            </div>
+            <div className="detalle-item">
+              <div className="etiqueta">Materiales</div>
+              <div className="valor">
+                {historial.orden.materiales?.length
+                  ? historial.orden.materiales
+                      .map(
+                        (m) =>
+                          `${m.material?.nombre ?? '—'} × ${m.cantidad ?? '—'}${
+                            m.material?.unidadMedida ? ` ${m.material.unidadMedida}` : ''
+                          }`
+                      )
+                      .join(', ')
+                  : '—'}
+              </div>
             </div>
             <div className="detalle-item">
               <div className="etiqueta">Estado actual</div>

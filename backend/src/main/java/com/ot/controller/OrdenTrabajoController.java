@@ -24,16 +24,21 @@ public class OrdenTrabajoController {
     private final UsuarioRepository usuarioRepository;
     private final HistorialOTRepository historialRepository;
     private final CategoriaOTRepository categoriaRepository;
+    private final MaterialRepository materialRepository;
+    private final OrdenMaterialRepository ordenMaterialRepository;
 
     public OrdenTrabajoController(OrdenTrabajoRepository ordenRepository, TipoOTRepository tipoRepository,
                                   EstadoOTRepository estadoRepository, UsuarioRepository usuarioRepository,
-                                  HistorialOTRepository historialRepository, CategoriaOTRepository categoriaRepository) {
+                                  HistorialOTRepository historialRepository, CategoriaOTRepository categoriaRepository,
+                                  MaterialRepository materialRepository, OrdenMaterialRepository ordenMaterialRepository) {
         this.ordenRepository = ordenRepository;
         this.tipoRepository = tipoRepository;
         this.estadoRepository = estadoRepository;
         this.usuarioRepository = usuarioRepository;
         this.historialRepository = historialRepository;
         this.categoriaRepository = categoriaRepository;
+        this.materialRepository = materialRepository;
+        this.ordenMaterialRepository = ordenMaterialRepository;
     }
 
     @GetMapping
@@ -197,6 +202,66 @@ public class OrdenTrabajoController {
         return ResponseEntity.ok(historialRepository.findByOrdenTrabajoIdOrderByFechaDesc(id));
     }
 
+    @PutMapping("/{id}/materiales")
+    @PreAuthorize("hasAnyRole('ADMIN','FACTIBILIZADOR')")
+    public ResponseEntity<?> setMateriales(@PathVariable Long id,
+                                           @RequestBody MaterialesRequest request,
+                                           Authentication auth) {
+        return ordenRepository.findById(id).map(orden -> {
+            List<MaterialAsignacion> items = request != null && request.getMateriales() != null
+                ? request.getMateriales() : List.of();
+
+            java.util.Set<Long> vistos = new java.util.HashSet<>();
+            List<com.ot.model.Material> materialesResueltos = new ArrayList<>();
+            List<java.math.BigDecimal> cantidades = new ArrayList<>();
+
+            for (MaterialAsignacion item : items) {
+                if (item.getMaterialId() == null) {
+                    return ResponseEntity.badRequest()
+                        .body(Map.of("mensaje", "Cada material debe indicar su id"));
+                }
+                if (item.getCantidad() == null || item.getCantidad().signum() <= 0) {
+                    return ResponseEntity.badRequest()
+                        .body(Map.of("mensaje", "La cantidad debe ser mayor que cero"));
+                }
+                if (!vistos.add(item.getMaterialId())) {
+                    return ResponseEntity.badRequest()
+                        .body(Map.of("mensaje", "Material duplicado en la lista"));
+                }
+                com.ot.model.Material material = materialRepository.findById(item.getMaterialId()).orElse(null);
+                if (material == null) {
+                    return ResponseEntity.badRequest()
+                        .body(Map.of("mensaje", "Material desconocido (id " + item.getMaterialId() + ")"));
+                }
+                if (!Boolean.TRUE.equals(material.getActivo())) {
+                    return ResponseEntity.badRequest()
+                        .body(Map.of("mensaje", "El material '" + material.getNombre() + "' está inactivo"));
+                }
+                materialesResueltos.add(material);
+                cantidades.add(item.getCantidad());
+            }
+
+            ordenMaterialRepository.deleteByOrdenTrabajoId(orden.getId());
+            for (int i = 0; i < materialesResueltos.size(); i++) {
+                com.ot.model.OrdenMaterial om = new com.ot.model.OrdenMaterial();
+                om.setOrdenTrabajo(orden);
+                om.setMaterial(materialesResueltos.get(i));
+                om.setCantidad(cantidades.get(i));
+                ordenMaterialRepository.save(om);
+            }
+
+            HistorialOT historial = new HistorialOT();
+            historial.setOrdenTrabajo(orden);
+            historial.setUsuario(usuarioRepository.findByEmail(auth.getName()).orElseThrow());
+            historial.setEstadoNuevo(orden.getEstado());
+            historial.setAccion("MATERIALES");
+            historial.setObservacion("Materiales de la OT actualizados (" + items.size() + " ítems)");
+            historialRepository.save(historial);
+
+            return ResponseEntity.ok(ordenRepository.findById(id).orElse(orden));
+        }).orElse(ResponseEntity.notFound().build());
+    }
+
     @GetMapping("/mis-historial")
     public ResponseEntity<List<HistorialOT>> getMisHistorial(Authentication auth) {
         Usuario usuario = usuarioRepository.findByEmail(auth.getName()).orElseThrow();
@@ -220,5 +285,22 @@ public class OrdenTrabajoController {
         public void setDescripcion(String descripcion) { this.descripcion = descripcion; }
         public Long getCategoriaId() { return categoriaId; }
         public void setCategoriaId(Long categoriaId) { this.categoriaId = categoriaId; }
+    }
+
+    public static class MaterialesRequest {
+        private List<MaterialAsignacion> materiales;
+
+        public List<MaterialAsignacion> getMateriales() { return materiales; }
+        public void setMateriales(List<MaterialAsignacion> materiales) { this.materiales = materiales; }
+    }
+
+    public static class MaterialAsignacion {
+        private Long materialId;
+        private java.math.BigDecimal cantidad;
+
+        public Long getMaterialId() { return materialId; }
+        public void setMaterialId(Long materialId) { this.materialId = materialId; }
+        public java.math.BigDecimal getCantidad() { return cantidad; }
+        public void setCantidad(java.math.BigDecimal cantidad) { this.cantidad = cantidad; }
     }
 }

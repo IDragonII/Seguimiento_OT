@@ -41,6 +41,9 @@ public class OrdenTrabajo {
     @JoinColumn(name = "categoria_id")
     private CategoriaOT categoria;
 
+    @OneToMany(mappedBy = "ordenTrabajo", fetch = FetchType.EAGER)
+    private java.util.List<OrdenMaterial> materiales = new java.util.ArrayList<>();
+
     @Column(name = "ubicacion", length = 120)
     private String ubicacion;
 

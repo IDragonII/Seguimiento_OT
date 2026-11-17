@@ -47,6 +47,7 @@ interface MovHistorial {
 
 const ACCIONES: Record<string, string> = {
   REGISTRO: 'Registro de la OT',
+  MATERIALES: 'Actualización de materiales',
   ENTREGA: 'Entrega al técnico',
   SOLICITUD_DEVOLUCION: 'Solicitud de devolución',
   CONFIRMACION_RECEPCION: 'Confirmación de recepción',

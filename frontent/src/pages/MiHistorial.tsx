@@ -36,6 +36,7 @@ interface MovHistorial {
 
 const ACCIONES: Record<string, string> = {
   REGISTRO: 'Registro de la OT',
+  MATERIALES: 'Actualización de materiales',
   ENTREGA: 'Entrega al técnico',
   SOLICITUD_DEVOLUCION: 'Solicitud de devolución',
   CONFIRMACION_RECEPCION: 'Confirmación de recepción',
@@ -44,6 +45,8 @@ const ACCIONES: Record<string, string> = {
 
 const COLOR_ACCION: Record<string, string> = {
   REGISTRO: '#64748B',
+  EDICION: '#64748B',
+  MATERIALES: '#64748B',
   ENTREGA: '#3478C7',
   SOLICITUD_DEVOLUCION: '#D97706',
   CONFIRMACION_RECEPCION: '#27976B',

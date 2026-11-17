@@ -27,6 +27,11 @@ interface OTInfo {
   apellidosNombre?: string | null
   descripcion?: string | null
   categoria?: { id?: number; nombre?: string } | null
+  materiales?: {
+    id?: number
+    cantidad?: number
+    material?: { id?: number; nombre?: string; unidadMedida?: string | null }
+  }[]
   ubicacion?: string
   fechaRegistro?: string
 }
@@ -68,6 +73,7 @@ const CATEGORIAS: { key: Categoria; nombre: string }[] = [
 
 const ACCIONES: Record<string, string> = {
   REGISTRO: 'Registro de la OT',
+  MATERIALES: 'Actualización de materiales',
   ENTREGA: 'Entrega al técnico',
   SOLICITUD_DEVOLUCION: 'Solicitud de devolución',
   CONFIRMACION_RECEPCION: 'Confirmación de recepción',
@@ -347,6 +353,21 @@ function Expediente({
         <dl className="mb-4">
           <Fila label="Categoría" valor={ot?.categoria?.nombre} />
           <Fila label="Descripción" valor={ot?.descripcion} />
+          <Fila
+            label="Materiales"
+            valor={
+              ot?.materiales && ot.materiales.length > 0
+                ? ot.materiales
+                    .map(
+                      (m) =>
+                        `${m.material?.nombre ?? '—'} × ${m.cantidad ?? '—'}${
+                          m.material?.unidadMedida ? ` ${m.material.unidadMedida}` : ''
+                        }`
+                    )
+                    .join(', ')
+                : undefined
+            }
+          />
           <Fila label="Fecha de registro" valor={fechaCorta(ot?.fechaRegistro)} />
           <Fila
             label="Fecha programada"
