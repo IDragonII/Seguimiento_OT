@@ -1,0 +1,29 @@
+name: Keep-alive Render (6:50-19)
+
+on:
+  schedule:
+    - cron: '*/10 * * * *'
+  workflow_dispatch:
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Chequear ventana 06:50-19:00 America/Lima
+        id: ventana
+        run: |
+          h=$((10#$(TZ=America/Lima date +%H)))
+          m=$((10#$(TZ=America/Lima date +%M)))
+          t=$((h * 60 + m))
+          if [ "$t" -ge 410 ] && [ "$t" -lt 1140 ]; then
+            echo "activa=true" >> "$GITHUB_OUTPUT"
+            echo "Ventana activa ($h:$m Lima)"
+          else
+            echo "activa=false" >> "$GITHUB_OUTPUT"
+            echo "Fuera de ventana ($h:$m Lima), sin ping"
+          fi
+
+      - name: Ping al backend Render
+        if: steps.ventana.outputs.activa == 'true'
+        run: curl --max-time 120 --retry 2 --retry-delay 5 -fsS https://ot-backend-4grl.onrender.com/api/health
