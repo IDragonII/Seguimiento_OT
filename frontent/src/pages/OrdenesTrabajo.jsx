@@ -3,6 +3,7 @@ import { api } from '../api/api'
 import { obtener } from '../api/catalogos'
 import { History, Package, Pencil } from 'lucide-react'
 import Modal from '../components/Modal'
+import ImportarOTsModal from '../components/ImportarOTsModal'
 import Paginacion from '../components/panel/Paginacion'
 
 export default function OrdenesTrabajo() {
@@ -37,6 +38,7 @@ export default function OrdenesTrabajo() {
     categoriaId: '',
   })
   const [formAbierto, setFormAbierto] = useState(false)
+  const [importarModal, setImportarModal] = useState(false)
   const [mensajeOk, setMensajeOk] = useState('')
 
   const [editando, setEditando] = useState(null)
@@ -217,9 +219,21 @@ export default function OrdenesTrabajo() {
         <div className="toolbar">
           <div className="acciones">
             {puedeCrear && (
-              <button className="btn" type="button" onClick={() => setFormAbierto(true)}>
-                Nueva OT
-              </button>
+              <>
+                <button className="btn" type="button" onClick={() => setFormAbierto(true)}>
+                  Nueva OT
+                </button>
+                <button
+                  className="btn"
+                  type="button"
+                  onClick={() => {
+                    setFormAbierto(false)
+                    setImportarModal(true)
+                  }}
+                >
+                  Importar Excel
+                </button>
+              </>
             )}
             <input
               placeholder="Buscar por número, apellidos, categoría…"
@@ -429,6 +443,10 @@ export default function OrdenesTrabajo() {
             </div>
           </form>
         </Modal>
+      )}
+
+      {importarModal && (
+        <ImportarOTsModal onCerrar={() => setImportarModal(false)} />
       )}
 
       {editando && (

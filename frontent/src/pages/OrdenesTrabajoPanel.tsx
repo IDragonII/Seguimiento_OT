@@ -12,6 +12,7 @@ import {
 } from 'lucide-react'
 import { api } from '../api/api'
 import Modal from '../components/Modal'
+import ImportarOTsModal from '../components/ImportarOTsModal'
 import { ESTADOS_OT, coloresDe } from '../components/panel/estadosOT'
 import PaginacionPanel from '../components/panel/PaginacionPanel'
 
@@ -86,6 +87,7 @@ type ModalState =
   | { tipo: 'nueva' }
   | { tipo: 'editar'; id: number }
   | { tipo: 'materiales'; id: number }
+  | { tipo: 'importar' }
   | null
 
 function fechaCorta(iso?: string | null): string | undefined {
@@ -1111,15 +1113,24 @@ export default function OrdenesTrabajoPanel() {
             />
 
             {puedeCrear && (
-              <button
-                type="button"
-                data-nueva-ot
-                className="btn ml-auto"
-                onClick={() => setModal({ tipo: 'nueva' })}
-              >
-                <Plus size={15} aria-hidden="true" />
-                Nueva OT
-              </button>
+              <>
+                <button
+                  type="button"
+                  data-nueva-ot
+                  className="btn ml-auto"
+                  onClick={() => setModal({ tipo: 'nueva' })}
+                >
+                  <Plus size={15} aria-hidden="true" />
+                  Nueva OT
+                </button>
+                <button
+                  type="button"
+                  className="btn ml-auto"
+                  onClick={() => setModal({ tipo: 'importar' })}
+                >
+                  Importar Excel
+                </button>
+              </>
             )}
           </div>
         )}
@@ -1282,6 +1293,9 @@ export default function OrdenesTrabajoPanel() {
             setModal({ tipo: 'detalle', id: modal.id })
           }}
         />
+      )}
+      {modal?.tipo === 'importar' && (
+        <ImportarOTsModal onCerrar={() => setModal(null)} />
       )}
     </main>
   )

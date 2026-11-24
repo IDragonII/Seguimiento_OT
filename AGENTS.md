@@ -167,6 +167,28 @@
   E2E: casos [3] y [4] extienden el módulo; el caso [5] (móvil) clickea
   la tarjeta `devoluciones` (nth(2), placeholder) y verifica 8 círculos en
   el radial.
+- **Módulo de importación Excel** (CONSULTOR + FACTIBILIZADOR): botón "Importar Excel" al costado de "Nueva OT" en el panel factibilizador (`OrdenesTrabajoPanel.tsx`) y en la vista admin (`OrdenesTrabajo.jsx`). Flujo en 3 pasos dentro de un modal `ImportarOTsModal` (nunca apilado): (1) **Subir** — seleccionar archivo `.xlsx` o `.xls`; (2) **Vista previa** — parseo robusto que ignora títulos, totales y firmas; extrae Nro., Código Orden Trabajo (últimos 6 dígitos → número de OT), Nombre (cliente), Dirección (a descripción), Tipo Orden Trabajo (normalizado contra catálogo: `INSTALACION NUEVA`→Instalación nueva, `REUBICACION MEDIDOR`→Reubicación; los no catalogados como `SERVICIO EXTRAORDINARIO` se omiten), y Ppto. Pre. (para categoría: >600 → Trifásica, si no → Monofásica; reubicaciones: categoría **elegible por fila** en la vista previa, arranca en Monofásica). (3) **Importar** — loop secuencial `POST /api/ordenes-trabajo` (backend sin cambios, reusa validaciones e historial). Resumen final: "X creadas, Y fallidas, Z omitidas".
+
+  El modal integra dependencia `xlsx` (SheetJS) para lectura en cliente. En el panel, solo FACTIBILIZADOR puede importar; en admin, ADMIN y FACTIBILIZADOR. El componente reutiliza el `Modal` base y el estado único evita apilamiento.
+
+  **Corrección (parseo/UX)**: la lógica pura vive en
+  `frontent/src/components/importarOTsParse.js` (`buscarHoja`,
+  `parsearFilas`, `parsearMonto`) y el modal solo orquesta. Las columnas se
+  resuelven **por nombre de encabezado** (no por posición: A–F en otro orden o
+  con columnas extra sigue funcionando) y ya no se exige un mínimo de 9
+  columnas. Validaciones por fila antes de enviar: código de OT con dígitos
+  (últimos 6), cliente obligatorio, `Ppto. Pre.` obligatorio en instalaciones
+  (montos `1.234,56` / `1,234.56`), tipo debe existir en el catálogo del
+  backend, y **duplicados dentro del archivo** por `tipo + númeroOT`. El
+  preview muestra la categoría que se enviará y **cada reubicación tiene su
+  propio select de categoría** (no hay selector global); los catálogos se cargan al
+  abrir el modal (el input queda deshabilitado hasta que lleguen). Los errores
+  se muestran en banner `role="alert"` dentro del modal (sin `alert()`), la
+  importación muestra progreso `x/total` con **Cancelar** y el resumen lista
+  las filas con problemas (creadas / fallidas / duplicadas / omitidas). Los
+  duplicados se detectan por `status 400` + mensaje del backend, no por regex
+  laxa.
+
 - **Módulo `ejecucion` construido** (rol nuevo **INSTALADOR**, "siguiente paso
   de factibilizador"): `frontent/src/pages/ProgramacionEjecucionPanel.tsx`
   (TSX + Tailwind, en `VISTAS_MODULO`). Lista las OT en estado `DEVUELTO`
