@@ -35,4 +35,10 @@ public interface EntregaDetalleRepository extends JpaRepository<EntregaDetalle, 
 
     // Último técnico que tuvo una OT (fallback de "responsable" en /buscar).
     List<EntregaDetalle> findByOrdenTrabajoIdOrderByFechaCreacionDesc(Long ordenTrabajoId);
+
+    // Id del último detalle de entrega por OT (la entrega vigente). Batch para
+    // marcar cuáles son recepcionables sin una consulta por detalle.
+    @Query("SELECT d.ordenTrabajo.id, MAX(d.id) FROM EntregaDetalle d "
+         + "WHERE d.ordenTrabajo.id IN :ordenIds GROUP BY d.ordenTrabajo.id")
+    List<Object[]> findUltimoDetalleIdPorOrden(@Param("ordenIds") List<Long> ordenIds);
 }

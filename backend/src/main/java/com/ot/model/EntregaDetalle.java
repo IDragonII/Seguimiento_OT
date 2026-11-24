@@ -46,4 +46,12 @@ public class EntregaDetalle {
 
     @Column(name = "fecha_creacion", nullable = false, updatable = false)
     private LocalDateTime fechaCreacion = LocalDateTime.now();
+
+    /**
+     * Derivado (no persistido): true si este detalle es la entrega vigente de su
+     * OT y aún se puede recepcionar. Evita que las entregas antiguas de una OT
+     * reentregada vuelvan a mostrar la acción de recepción.
+     */
+    @Transient
+    private Boolean recibible;
 }

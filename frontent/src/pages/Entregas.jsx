@@ -587,9 +587,7 @@ export default function Entregas({ modo = 'entregas' }) {
             <tbody>
               {entregas.map((entrega) => {
                 const detalles = entrega.detalles || []
-                const tienePendientesRecepcion = detalles.some(
-                  (d) => d.ordenTrabajo?.estado?.nombre === 'ENTREGADO'
-                )
+                const tienePendientesRecepcion = detalles.some((d) => d.recibible)
                 return (
                   <tr key={entrega.id}>
                     <td data-label="#">{entrega.id}</td>
@@ -669,7 +667,11 @@ export default function Entregas({ modo = 'entregas' }) {
                     <td data-label="Recepción">
                       {d.recibidoPor
                         ? `${d.recibidoPor.nombres} ${d.recibidoPor.apellidos}`
-                        : 'Pendiente'}
+                        : d.recibible
+                          ? 'Pendiente'
+                          : d.ordenTrabajo?.estado?.nombre === 'ENTREGADO'
+                            ? 'Entrega anterior'
+                            : '—'}
                     </td>
                   </tr>
                 ))}
@@ -697,7 +699,7 @@ export default function Entregas({ modo = 'entregas' }) {
                 </div>
               )}
               {entregaParaRecibir.detalles.map((d) => {
-                const recibible = d.ordenTrabajo?.estado?.nombre === 'ENTREGADO' && !d.recibidoPor
+                const recibible = Boolean(d.recibible)
                 const yaSeleccionada = recepcionSeleccion.includes(d.id)
                 return (
                   <div
@@ -734,7 +736,11 @@ export default function Entregas({ modo = 'entregas' }) {
                       </div>
                       {!recibible && (
                         <span style={{ color: 'var(--muted)', fontSize: 11 }}>
-                          {d.recibidoPor ? 'ya recibida' : `estado ${d.ordenTrabajo?.estado?.nombre || '—'}`}
+                          {d.recibidoPor
+                            ? 'ya recibida'
+                            : d.ordenTrabajo?.estado?.nombre === 'ENTREGADO'
+                              ? 'entrega anterior'
+                              : `estado ${d.ordenTrabajo?.estado?.nombre || '—'}`}
                         </span>
                       )}
                     </label>

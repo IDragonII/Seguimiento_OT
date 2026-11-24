@@ -38,6 +38,8 @@ interface DetalleEntrega {
   tecnico?: UsuarioRef | null
   fechaDevolucion?: string | null
   recibidoPor?: UsuarioRef | null
+  /** Derivado del backend: es la entrega vigente de la OT y todavía se puede recepcionar. */
+  recibible?: boolean
 }
 
 interface Entrega {
@@ -537,9 +539,7 @@ function ModalDetalleEntrega({ id, onCerrar }: { id: number; onCerrar: () => voi
     )
   }
 
-  const pendientes = resp.detalles.filter(
-    (d) => d.ordenTrabajo?.estado?.nombre === 'ENTREGADO'
-  ).length
+  const pendientes = resp.detalles.filter((d) => d.recibible).length
 
   return (
     <Modal
@@ -600,7 +600,15 @@ function ModalDetalleEntrega({ id, onCerrar }: { id: number; onCerrar: () => voi
                 <BadgeEstado estado={d.ordenTrabajo?.estado?.nombre ?? ''} />
                 <span className="truncate">{d.ordenTrabajo?.ubicacion || '—'}</span>
                 <span>{d.fechaDevolucion ? fechaHora(d.fechaDevolucion) : '—'}</span>
-                <span>{d.recibidoPor ? nombreDe(d.recibidoPor) : 'Pendiente'}</span>
+                <span>
+                  {d.recibidoPor
+                    ? nombreDe(d.recibidoPor)
+                    : d.recibible
+                      ? 'Pendiente'
+                      : d.ordenTrabajo?.estado?.nombre === 'ENTREGADO'
+                        ? 'Entrega anterior'
+                        : '—'}
+                </span>
               </div>
             ))}
           </div>
@@ -703,8 +711,7 @@ function ModalRecepcion({
               <p className="p-2 text-[13px] text-[#718096]">No hay OT en esta entrega</p>
             )}
             {resp.detalles.map((d) => {
-              const recibible =
-                d.ordenTrabajo?.estado?.nombre === 'ENTREGADO' && !d.recibidoPor
+              const recibible = Boolean(d.recibible)
               const marcada = sel.includes(d.id)
               return (
                 <div
@@ -737,7 +744,11 @@ function ModalRecepcion({
                     </span>
                     {!recibible && (
                       <span className="shrink-0 text-[11px] text-[#718096]">
-                        {d.recibidoPor ? 'ya recibida' : `estado ${d.ordenTrabajo?.estado?.nombre || '—'}`}
+                        {d.recibidoPor
+                          ? 'ya recibida'
+                          : d.ordenTrabajo?.estado?.nombre === 'ENTREGADO'
+                            ? 'entrega anterior'
+                            : `estado ${d.ordenTrabajo?.estado?.nombre || '—'}`}
                       </span>
                     )}
                   </label>
@@ -873,8 +884,7 @@ export default function EntregasPanel() {
     0
   )
   const totalSinRecepcion = listaEntregas.reduce(
-    (n, e) =>
-      n + e.detalles.filter((d) => d.ordenTrabajo?.estado?.nombre === 'ENTREGADO').length,
+    (n, e) => n + e.detalles.filter((d) => d.recibible).length,
     0
   )
 
@@ -902,10 +912,9 @@ export default function EntregasPanel() {
     paginaActual * POR_PAGINA + POR_PAGINA
   )
 
-  const conRecepcionPendiente = (e: Entrega) =>
-    e.detalles.some((d) => d.ordenTrabajo?.estado?.nombre === 'ENTREGADO')
+  const conRecepcionPendiente = (e: Entrega) => e.detalles.some((d) => d.recibible)
   const nRecepcionPendiente = (e: Entrega) =>
-    e.detalles.filter((d) => d.ordenTrabajo?.estado?.nombre === 'ENTREGADO').length
+    e.detalles.filter((d) => d.recibible).length
 
   async function trasEntregaCreada(id: number) {
     await recargar()

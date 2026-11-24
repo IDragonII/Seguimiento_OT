@@ -52,6 +52,9 @@ public class EntregaController {
             : detalleRepository.findByEntregaIdIn(entregaIds).stream()
                 .collect(Collectors.groupingBy(d -> d.getEntrega().getId()));
 
+        marcarRecibibles(detallesPorEntrega.values().stream()
+            .flatMap(List::stream).toList());
+
         List<Map<String, Object>> result = new ArrayList<>();
         for (Entrega entrega : entregas) {
             Map<String, Object> item = new HashMap<>();
@@ -72,10 +75,38 @@ public class EntregaController {
             .map(e -> {
                 Map<String, Object> response = new HashMap<>();
                 response.put("entrega", e);
-                response.put("detalles", detalleRepository.findByEntregaId(id));
+                List<EntregaDetalle> detalles = detalleRepository.findByEntregaId(id);
+                marcarRecibibles(detalles);
+                response.put("detalles", detalles);
                 return ResponseEntity.ok(response);
             })
             .orElse(ResponseEntity.notFound().build());
+    }
+
+    /**
+     * Marca qué detalles son la entrega vigente de su OT (el último creado) y
+     * todavía recepcionables. Una OT reentregada deja sus entregas anteriores sin
+     * acción de recepción, aunque su estado global vuelva a ENTREGADO.
+     */
+    private void marcarRecibibles(List<EntregaDetalle> detalles) {
+        if (detalles == null || detalles.isEmpty()) return;
+
+        List<Long> ordenIds = detalles.stream()
+            .map(d -> d.getOrdenTrabajo().getId()).distinct().toList();
+        Map<Long, Long> ultimoDetallePorOrden = new HashMap<>();
+        for (Object[] fila : detalleRepository.findUltimoDetalleIdPorOrden(ordenIds)) {
+            ultimoDetallePorOrden.put((Long) fila[0], (Long) fila[1]);
+        }
+
+        for (EntregaDetalle detalle : detalles) {
+            Long ultimoId = ultimoDetallePorOrden.get(detalle.getOrdenTrabajo().getId());
+            boolean vigente = ultimoId != null && ultimoId.equals(detalle.getId());
+            boolean entregado = detalle.getOrdenTrabajo().getEstado() != null
+                && "ENTREGADO".equals(detalle.getOrdenTrabajo().getEstado().getNombre());
+            detalle.setRecibible(vigente && entregado
+                && detalle.getRecibidoPor() == null
+                && detalle.getFechaDevolucion() == null);
+        }
     }
 
     @PostMapping
@@ -350,6 +381,17 @@ public class EntregaController {
             if (detalle.getRecibidoPor() != null) {
                 return ResponseEntity.badRequest()
                     .body(Map.of("mensaje", "La OT " + detalle.getOrdenTrabajo().getNumeroOT() + " ya fue recibida"));
+            }
+
+            // Solo la entrega vigente (la última) de la OT puede recepcionarse: las
+            // entregas anteriores de una OT reentregada no deben tocarse.
+            Long ultimoDetalleId = detalleRepository
+                .findUltimoDetalleIdPorOrden(List.of(detalle.getOrdenTrabajo().getId()))
+                .stream().findFirst().map(fila -> (Long) fila[1]).orElse(null);
+            if (ultimoDetalleId != null && !ultimoDetalleId.equals(detalle.getId())) {
+                return ResponseEntity.badRequest()
+                    .body(Map.of("mensaje", "La OT " + detalle.getOrdenTrabajo().getNumeroOT()
+                        + " fue reentregada: solo se puede recepcionar su entrega vigente"));
             }
 
             OrdenTrabajo orden = detalle.getOrdenTrabajo();
