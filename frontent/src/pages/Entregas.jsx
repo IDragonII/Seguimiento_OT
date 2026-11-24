@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Eye, PackageCheck } from 'lucide-react'
+import { Eye, PackageCheck, RotateCcw } from 'lucide-react'
 import { api } from '../api/api'
 import Modal from '../components/Modal'
 
@@ -30,6 +30,8 @@ export default function Entregas({ modo = 'entregas' }) {
   })
   const [formAbierto, setFormAbierto] = useState(false)
   const [busqueda, setBusqueda] = useState('')
+  const [modoReentrega, setModoReentrega] = useState(false)
+  const [ordenesDevueltas, setOrdenesDevueltas] = useState(null)
 
   const [órdenesDisponibles, setÓrdenesDisponibles] = useState([])
   const [tecnicosForm, setTecnicosForm] = useState([])
@@ -61,7 +63,26 @@ export default function Entregas({ modo = 'entregas' }) {
     setForm({ fecha: ahoraLocal(), observacion: '', tecnicoId: '', filas: [] })
     setBusqueda('')
     setError('')
+    setModoReentrega(false)
     setFormAbierto(true)
+  }
+
+  // Caso especial: reentregar una OT devuelta (estado DEVUELTO).
+  function cambiarModoReentrega() {
+    const nuevo = !modoReentrega
+    setModoReentrega(nuevo)
+    setForm((prev) => ({ ...prev, filas: [] }))
+    setBusqueda('')
+    setError('')
+    if (nuevo && ordenesDevueltas === null) {
+      api
+        .get('/ordenes-trabajo/devueltas')
+        .then(setOrdenesDevueltas)
+        .catch((err) => {
+          setOrdenesDevueltas([])
+          setError(err.message || 'No se pudieron cargar las OTs devueltas')
+        })
+    }
   }
 
   function cerrar() {
@@ -109,6 +130,7 @@ export default function Entregas({ modo = 'entregas' }) {
       await api.post('/entregas', {
         observacion: form.observacion,
         fecha: form.fecha,
+        reentrega: modoReentrega,
         detalles: form.filas.map((f) => ({
           ordenId: f.ordenId,
           tecnicoId: Number(f.tecnicoId || form.tecnicoId),
@@ -203,7 +225,9 @@ export default function Entregas({ modo = 'entregas' }) {
     setRecepcionUbicaciones({})
   }
 
-  const OTsFiltradas = órdenesDisponibles.filter((o) => {
+  const catalogoOTs = modoReentrega ? (ordenesDevueltas ?? []) : órdenesDisponibles
+
+  const OTsFiltradas = catalogoOTs.filter((o) => {
     if (!busqueda) return true
     const q = busqueda.toLowerCase()
     return (
@@ -318,7 +342,7 @@ export default function Entregas({ modo = 'entregas' }) {
       {formAbierto && (
         <Modal titulo="Registrar entrega" onCerrar={() => setFormAbierto(false)} ancho={900}>
           <form className="formulario" onSubmit={crearEntrega}>
-            <div style={{ display: 'grid', gridTemplateColumns: '300px 1fr', gap: 16, alignItems: 'start' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: '300px minmax(0, 1fr)', gap: 16, alignItems: 'start' }}>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
                 <div style={{ border: '1px solid var(--border)', borderRadius: 8, padding: '12px 14px' }}>
                   <label>FECHA</label>
@@ -362,22 +386,59 @@ export default function Entregas({ modo = 'entregas' }) {
                 </div>
               </div>
 
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 12, minWidth: 0 }}>
                 <div style={{ border: '1px solid var(--border)', borderRadius: 8, padding: '12px 14px' }}>
-                  <label>OTS A ENTREGAR (ESTADO PROGRAMADO)</label>
+                  <div
+                    style={{
+                      display: 'flex',
+                      flexWrap: 'wrap',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      gap: 8,
+                    }}
+                  >
+                    <label style={{ margin: 0 }}>
+                      {modoReentrega
+                        ? 'OTS DEVUELTAS PARA REENTREGA (ESTADO DEVUELTO)'
+                        : 'OTS A ENTREGAR (ESTADO PROGRAMADO)'}
+                    </label>
+                    <button
+                      type="button"
+                      data-reentrega-toggle
+                      onClick={cambiarModoReentrega}
+                      title={
+                        modoReentrega
+                          ? 'Volver a la entrega normal'
+                          : 'Caso especial: reentregar una OT devuelta'
+                      }
+                      className={modoReentrega ? 'btn btn-chico' : 'btn btn-secundario btn-chico'}
+                      style={{ display: 'inline-flex', alignItems: 'center', gap: 4, flexShrink: 0 }}
+                    >
+                      <RotateCcw size={13} />
+                      {modoReentrega ? 'Entrega normal' : 'Reentregar'}
+                    </button>
+                  </div>
                   <input
                     value={busqueda}
                     onChange={(e) => setBusqueda(e.target.value)}
-                    placeholder="Buscar por número OT, tipo o descripción…"
-                    style={{ marginBottom: 8 }}
+                    placeholder={
+                      modoReentrega
+                        ? 'Buscar OT devuelta por número, tipo o cliente…'
+                        : 'Buscar por número OT, tipo o descripción…'
+                    }
+                    style={{ marginTop: 8, marginBottom: 8 }}
                   />
                   <div style={{ maxHeight: 190, overflowY: 'auto' }}>
-                    {órdenesDisponibles.length === 0 && (
+                    {catalogoOTs.length === 0 && (
                       <div style={{ color: 'var(--muted)', fontSize: 13, padding: '6px 2px' }}>
-                        No hay OT en estado PROGRAMADO disponibles
+                        {modoReentrega
+                          ? ordenesDevueltas === null
+                            ? 'Cargando OTs devueltas…'
+                            : 'No hay OT en estado DEVUELTO disponibles para reentrega'
+                          : 'No hay OT en estado PROGRAMADO disponibles'}
                       </div>
                     )}
-                    {órdenesDisponibles.length > 0 && OTsDisponibles.length === 0 && (
+                    {catalogoOTs.length > 0 && OTsDisponibles.length === 0 && (
                       <div style={{ color: 'var(--muted)', fontSize: 13, padding: '6px 2px' }}>
                         {busqueda
                           ? `Sin resultados para "${busqueda}"`
@@ -421,7 +482,7 @@ export default function Entregas({ modo = 'entregas' }) {
                       </div>
                     )}
                     {form.filas.map((f) => {
-                      const o = órdenesDisponibles.find((x) => x.id === f.ordenId)
+                      const o = catalogoOTs.find((x) => x.id === f.ordenId)
                       const general = tecnicosForm.find((t) => String(t.id) === String(form.tecnicoId))
                       return (
                         <div
@@ -491,7 +552,7 @@ export default function Entregas({ modo = 'entregas' }) {
                   filasResueltas.length !== form.filas.length
                 }
               >
-                Registrar entrega
+                {modoReentrega ? 'Registrar reentrega' : 'Registrar entrega'}
               </button>
               <button className="btn btn-secundario" type="button" onClick={() => cerrar()}>
                 Cancelar

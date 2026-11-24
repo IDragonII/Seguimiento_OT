@@ -284,7 +284,7 @@ function ModalNuevaEntrega({
   return (
     <Modal titulo="Registrar entrega" ancho={900} onCerrar={onCerrar}>
       <div data-entrega-form className="space-y-4">
-        <div className="grid gap-4 lg:grid-cols-[300px_1fr]">
+        <div className="grid gap-4 lg:grid-cols-[300px_minmax(0,1fr)]">
           <div className="space-y-3">
             <div className="rounded-lg border border-[#E4E8EE] px-3 py-2.5">
               <label className="text-xs font-semibold uppercase tracking-wide text-[#718096]">
@@ -335,7 +335,7 @@ function ModalNuevaEntrega({
             </div>
           </div>
 
-          <div className="space-y-3">
+          <div className="min-w-0 space-y-3">
             <div className="rounded-lg border border-[#E4E8EE] px-3 py-2.5">
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <label className="text-xs font-semibold uppercase tracking-wide text-[#718096]">
@@ -352,7 +352,7 @@ function ModalNuevaEntrega({
                       ? 'Caso especial: reentregar una OT devuelta'
                       : 'Volver a la entrega normal'
                   }
-                  className={`inline-flex items-center gap-1 rounded-lg border px-2 py-1 text-[11px] font-semibold transition focus:outline-none focus:ring-2 focus:ring-[#3478C7]/40 ${
+                  className={`inline-flex shrink-0 items-center gap-1 rounded-lg border px-2 py-1 text-[11px] font-semibold transition focus:outline-none focus:ring-2 focus:ring-[#3478C7]/40 ${
                     modo === 'reentrega'
                       ? 'border-[#D97706] bg-[#D97706] text-white hover:bg-[#B45309]'
                       : 'border-[#E4E8EE] bg-white text-[#55657A] hover:border-[#D97706] hover:text-[#D97706]'
