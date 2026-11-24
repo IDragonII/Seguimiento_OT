@@ -5,6 +5,7 @@ import {
   List,
   PackageCheck,
   Plus,
+  RotateCcw,
   Search,
   Truck,
 } from 'lucide-react'
@@ -165,8 +166,9 @@ function ModalNuevaEntrega({
   onCerrar: () => void
   onCreada: (id: number) => void
 }) {
-  const [origen, setOrigen] = useState<OTInfo[]>([])
-  const [disponibles, setDisponibles] = useState<OTInfo[] | null>(null)
+  const [modo, setModo] = useState<'normal' | 'reentrega'>('normal')
+  const [catalogoNormal, setCatalogoNormal] = useState<OTInfo[] | null>(null)
+  const [catalogoReentrega, setCatalogoReentrega] = useState<OTInfo[] | null>(null)
   const [filas, setFilas] = useState<{ ordenId: number; tecnicoId: string }[]>([])
   const [busqueda, setBusqueda] = useState('')
   const [fecha, setFecha] = useState(ahoraLocal())
@@ -180,14 +182,11 @@ function ModalNuevaEntrega({
     api
       .get('/ordenes-trabajo/disponibles')
       .then((lista: OTInfo[]) => {
-        if (vivo) {
-          setDisponibles(lista)
-          setOrigen(lista)
-        }
+        if (vivo) setCatalogoNormal(lista)
       })
       .catch((err: Error) => {
         if (vivo) {
-          setDisponibles([])
+          setCatalogoNormal([])
           setError(err.message || 'No se pudieron cargar las OTs disponibles')
         }
       })
@@ -196,7 +195,36 @@ function ModalNuevaEntrega({
     }
   }, [])
 
+  // Caso especial de reentrega: las OTs devueltas se cargan al activar el modo.
+  useEffect(() => {
+    if (modo !== 'reentrega' || catalogoReentrega !== null) return
+    let vivo = true
+    api
+      .get('/ordenes-trabajo/devueltas')
+      .then((lista: OTInfo[]) => {
+        if (vivo) setCatalogoReentrega(lista)
+      })
+      .catch((err: Error) => {
+        if (vivo) {
+          setCatalogoReentrega([])
+          setError(err.message || 'No se pudieron cargar las OTs devueltas')
+        }
+      })
+    return () => {
+      vivo = false
+    }
+  }, [modo, catalogoReentrega])
+
+  const disponibles = modo === 'normal' ? catalogoNormal : catalogoReentrega
   const catalogo = disponibles ?? []
+
+  function cambiarModo(nuevo: 'normal' | 'reentrega') {
+    if (nuevo === modo) return
+    setModo(nuevo)
+    setFilas([])
+    setBusqueda('')
+    setError('')
+  }
   const disponiblesVisibles = catalogo.filter((o) => {
     if (filas.some((f) => f.ordenId === o.id)) return false
     if (!busqueda) return true
@@ -240,6 +268,7 @@ function ModalNuevaEntrega({
       const res = (await api.post('/entregas', {
         observacion,
         fecha,
+        reentrega: modo === 'reentrega',
         detalles: filas.map((f) => ({
           ordenId: f.ordenId,
           tecnicoId: Number(f.tecnicoId || tecnicoGeneral),
@@ -308,14 +337,40 @@ function ModalNuevaEntrega({
 
           <div className="space-y-3">
             <div className="rounded-lg border border-[#E4E8EE] px-3 py-2.5">
-              <label className="text-xs font-semibold uppercase tracking-wide text-[#718096]">
-                OTs a entregar (estado PROGRAMADO)
-              </label>
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <label className="text-xs font-semibold uppercase tracking-wide text-[#718096]">
+                  {modo === 'normal'
+                    ? 'OTs a entregar (estado PROGRAMADO)'
+                    : 'OTs devueltas para reentrega (estado DEVUELTO)'}
+                </label>
+                <button
+                  type="button"
+                  data-reentrega-toggle
+                  onClick={() => cambiarModo(modo === 'normal' ? 'reentrega' : 'normal')}
+                  title={
+                    modo === 'normal'
+                      ? 'Caso especial: reentregar una OT devuelta'
+                      : 'Volver a la entrega normal'
+                  }
+                  className={`inline-flex items-center gap-1 rounded-lg border px-2 py-1 text-[11px] font-semibold transition focus:outline-none focus:ring-2 focus:ring-[#3478C7]/40 ${
+                    modo === 'reentrega'
+                      ? 'border-[#D97706] bg-[#D97706] text-white hover:bg-[#B45309]'
+                      : 'border-[#E4E8EE] bg-white text-[#55657A] hover:border-[#D97706] hover:text-[#D97706]'
+                  }`}
+                >
+                  <RotateCcw size={13} aria-hidden="true" />
+                  {modo === 'normal' ? 'Reentregar' : 'Entrega normal'}
+                </button>
+              </div>
               <input
                 data-entrega-buscador
                 value={busqueda}
                 onChange={(e) => setBusqueda(e.target.value)}
-                placeholder="Buscar por número OT, tipo o descripción…"
+                placeholder={
+                  modo === 'normal'
+                    ? 'Buscar por número OT, tipo o descripción…'
+                    : 'Buscar OT devuelta por número, tipo o cliente…'
+                }
                 className="mt-1 w-full rounded-lg border border-[#E4E8EE] px-3 py-2 text-sm text-[#18283E] outline-none focus:border-[#3478C7] focus:ring-2 focus:ring-[#3478C7]/25"
               />
               <div className="mt-2 max-h-[190px] overflow-y-auto">
@@ -324,7 +379,9 @@ function ModalNuevaEntrega({
                 )}
                 {disponibles !== null && disponibles.length === 0 && (
                   <p className="py-1 text-[13px] text-[#718096]">
-                    No hay OT en estado PROGRAMADO disponibles
+                    {modo === 'normal'
+                      ? 'No hay OT en estado PROGRAMADO disponibles'
+                      : 'No hay OT en estado DEVUELTO disponibles para reentrega'}
                   </p>
                 )}
                 {disponibles !== null && disponibles.length > 0 && disponiblesVisibles.length === 0 && (
@@ -361,7 +418,7 @@ function ModalNuevaEntrega({
                   </p>
                 )}
                 {filas.map((f) => {
-                  const o = origen.find((x) => x.id === f.ordenId)
+                  const o = catalogo.find((x) => x.id === f.ordenId)
                   const general = tecnicos.find((t) => String(t.id) === String(tecnicoGeneral))
                   return (
                     <div
@@ -434,7 +491,11 @@ function ModalNuevaEntrega({
             disabled={enviando || filas.length === 0 || resueltas.length !== filas.length}
             onClick={enviar}
           >
-            {enviando ? 'Registrando…' : 'Registrar entrega'}
+            {enviando
+              ? 'Registrando…'
+              : modo === 'reentrega'
+                ? 'Registrar reentrega'
+                : 'Registrar entrega'}
           </button>
         </div>
       </div>

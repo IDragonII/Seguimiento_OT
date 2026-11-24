@@ -85,12 +85,17 @@ public class EntregaController {
             return ResponseEntity.badRequest().body(Map.of("mensaje", "Debe asignar al menos una OT a un técnico"));
         }
 
+        // Caso especial: una OT devuelta se puede volver a entregar (reentrega).
+        boolean reentrega = Boolean.TRUE.equals(request.getReentrega());
+        String estadoRequerido = reentrega ? "DEVUELTO" : "PROGRAMADO";
+
         for (EntregaDetalleRequest detalleReq : request.getDetalles()) {
             OrdenTrabajo orden = ordenRepository.findById(detalleReq.getOrdenId()).orElseThrow();
 
-            if (orden.getEstado() == null || !orden.getEstado().getNombre().equals("PROGRAMADO")) {
+            if (orden.getEstado() == null || !orden.getEstado().getNombre().equals(estadoRequerido)) {
                 return ResponseEntity.badRequest()
-                    .body(Map.of("mensaje", "La OT " + orden.getNumeroOT() + " no está en estado PROGRAMADO"));
+                    .body(Map.of("mensaje", "La OT " + orden.getNumeroOT() + " no está en estado "
+                        + estadoRequerido + (reentrega ? " (reentrega)" : "")));
             }
 
             if (detalleRepository.existsByOrdenTrabajoIdAndFechaDevolucionIsNull(orden.getId())) {
@@ -136,8 +141,9 @@ public class EntregaController {
             historial.setUsuario(usuario);
             historial.setEstadoNuevo(estadoEntregado);
             historial.setEntregaDetalle(detalle);
-            historial.setAccion("ENTREGA");
-            historial.setObservacion("OT entregada a " + tecnico.getNombres() + " " + tecnico.getApellidos());
+            historial.setAccion(reentrega ? "REENTREGA" : "ENTREGA");
+            historial.setObservacion((reentrega ? "OT reentregada a " : "OT entregada a ")
+                + tecnico.getNombres() + " " + tecnico.getApellidos());
             historialRepository.save(historial);
         }
 
@@ -387,12 +393,15 @@ public class EntregaController {
     public static class EntregaRequest {
         private String observacion;
         private LocalDateTime fecha;
+        private Boolean reentrega;
         private List<EntregaDetalleRequest> detalles;
 
         public String getObservacion() { return observacion; }
         public void setObservacion(String observacion) { this.observacion = observacion; }
         public LocalDateTime getFecha() { return fecha; }
         public void setFecha(LocalDateTime fecha) { this.fecha = fecha; }
+        public Boolean getReentrega() { return reentrega; }
+        public void setReentrega(Boolean reentrega) { this.reentrega = reentrega; }
         public List<EntregaDetalleRequest> getDetalles() { return detalles; }
         public void setDetalles(List<EntregaDetalleRequest> detalles) { this.detalles = detalles; }
     }
