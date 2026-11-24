@@ -733,17 +733,56 @@
 
 /* ---------- Modal: cerrar sesión ---------- */
 
+.logout-modal {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  padding: 6px 4px 2px;
+}
+
+.logout-icono {
+  display: grid;
+  place-items: center;
+  width: 48px;
+  height: 48px;
+  border-radius: 999px;
+  background: #fdecec;
+  color: #c0392b;
+  margin-bottom: 14px;
+}
+
+.logout-titulo {
+  margin: 0 0 6px;
+  font-size: 17px;
+  font-weight: 700;
+  color: var(--sigot-oscuro);
+}
+
 .logout-texto {
-  margin: 0 0 18px;
-  font-size: 14px;
+  margin: 0 0 22px;
+  max-width: 330px;
+  font-size: 13.5px;
   line-height: 1.6;
   color: var(--sigot-gris);
 }
 
 .modal-acciones {
   display: flex;
-  justify-content: flex-end;
+  justify-content: center;
   gap: 10px;
+  width: 100%;
+}
+
+.modal-acciones .btn {
+  flex: 1;
+  text-align: center;
+}
+
+@media (max-width: 420px) {
+  .modal-acciones {
+    flex-direction: column-reverse;
+  }
 }
 
 /* ---------- Responsive ---------- */

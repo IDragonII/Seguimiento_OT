@@ -253,18 +253,31 @@ export default function ControlesPanel({ variante = 'panel' }) {
       )}
 
       {modal === 'logout' && (
-        <Modal titulo="Cerrar sesión" ancho={400} onCerrar={() => setModal(null)}>
-          <p className="logout-texto">
-            ¿Seguro que deseas cerrar sesión? Tendrás que volver a iniciar sesión
-            para entrar al sistema.
-          </p>
-          <div className="modal-acciones">
-            <button type="button" className="btn-secundario" onClick={() => setModal(null)}>
-              Cancelar
-            </button>
-            <button type="button" className="btn-peligro" onClick={() => api.logout()}>
-              Cerrar sesión
-            </button>
+        <Modal titulo="Cerrar sesión" ancho={440} onCerrar={() => setModal(null)}>
+          <div className="logout-modal">
+            <span className="logout-icono" aria-hidden="true">
+              <LogOut size={22} />
+            </span>
+            <h3 className="logout-titulo">¿Cerrar sesión ahora?</h3>
+            <p className="logout-texto">
+              {usuario?.nombres
+                ? `${usuario.nombres}, tendrás que volver a ingresar tu correo y contraseña para entrar al sistema.`
+                : 'Tendrás que volver a ingresar tu correo y contraseña para entrar al sistema.'}
+            </p>
+            <div className="modal-acciones">
+              <button
+                type="button"
+                className="btn btn-secundario"
+                onClick={() => setModal(null)}
+              >
+                Cancelar
+              </button>
+              <button type="button" className="btn btn-peligro" onClick={() => api.logout()}>
+                <span className="inline-flex items-center gap-2">
+                  <LogOut size={15} /> Cerrar sesión
+                </span>
+              </button>
+            </div>
           </div>
         </Modal>
       )}
