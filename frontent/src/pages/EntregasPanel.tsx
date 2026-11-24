@@ -217,11 +217,13 @@ function ModalNuevaEntrega({
 
   const disponibles = modo === 'normal' ? catalogoNormal : catalogoReentrega
   const catalogo = disponibles ?? []
+  // La selección es única para ambos catálogos: se pueden entregar juntas OTs
+  // programadas y devueltas, así que al cambiar de modo no se pierde lo elegido.
+  const catalogoSeleccion = [...(catalogoNormal ?? []), ...(catalogoReentrega ?? [])]
 
   function cambiarModo(nuevo: 'normal' | 'reentrega') {
     if (nuevo === modo) return
     setModo(nuevo)
-    setFilas([])
     setBusqueda('')
     setError('')
   }
@@ -268,7 +270,6 @@ function ModalNuevaEntrega({
       const res = (await api.post('/entregas', {
         observacion,
         fecha,
-        reentrega: modo === 'reentrega',
         detalles: filas.map((f) => ({
           ordenId: f.ordenId,
           tecnicoId: Number(f.tecnicoId || tecnicoGeneral),
@@ -418,7 +419,7 @@ function ModalNuevaEntrega({
                   </p>
                 )}
                 {filas.map((f) => {
-                  const o = catalogo.find((x) => x.id === f.ordenId)
+                  const o = catalogoSeleccion.find((x) => x.id === f.ordenId)
                   const general = tecnicos.find((t) => String(t.id) === String(tecnicoGeneral))
                   return (
                     <div
@@ -491,11 +492,7 @@ function ModalNuevaEntrega({
             disabled={enviando || filas.length === 0 || resueltas.length !== filas.length}
             onClick={enviar}
           >
-            {enviando
-              ? 'Registrando…'
-              : modo === 'reentrega'
-                ? 'Registrar reentrega'
-                : 'Registrar entrega'}
+            {enviando ? 'Registrando…' : 'Registrar entrega'}
           </button>
         </div>
       </div>

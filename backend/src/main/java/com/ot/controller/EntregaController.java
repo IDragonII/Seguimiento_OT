@@ -85,17 +85,16 @@ public class EntregaController {
             return ResponseEntity.badRequest().body(Map.of("mensaje", "Debe asignar al menos una OT a un técnico"));
         }
 
-        // Caso especial: una OT devuelta se puede volver a entregar (reentrega).
-        boolean reentrega = Boolean.TRUE.equals(request.getReentrega());
-        String estadoRequerido = reentrega ? "DEVUELTO" : "PROGRAMADO";
-
         for (EntregaDetalleRequest detalleReq : request.getDetalles()) {
             OrdenTrabajo orden = ordenRepository.findById(detalleReq.getOrdenId()).orElseThrow();
+            String estadoOT = orden.getEstado() != null ? orden.getEstado().getNombre() : null;
 
-            if (orden.getEstado() == null || !orden.getEstado().getNombre().equals(estadoRequerido)) {
+            // Se aceptan OTs programadas (entrega normal) y devueltas (reentrega).
+            // Pueden venir mezcladas en una misma entrega.
+            if (!"PROGRAMADO".equals(estadoOT) && !"DEVUELTO".equals(estadoOT)) {
                 return ResponseEntity.badRequest()
-                    .body(Map.of("mensaje", "La OT " + orden.getNumeroOT() + " no está en estado "
-                        + estadoRequerido + (reentrega ? " (reentrega)" : "")));
+                    .body(Map.of("mensaje", "La OT " + orden.getNumeroOT()
+                        + " no está en estado PROGRAMADO ni DEVUELTO"));
             }
 
             if (detalleRepository.existsByOrdenTrabajoIdAndFechaDevolucionIsNull(orden.getId())) {
@@ -123,6 +122,8 @@ public class EntregaController {
         for (EntregaDetalleRequest detalleReq : request.getDetalles()) {
             OrdenTrabajo orden = ordenRepository.findById(detalleReq.getOrdenId()).orElseThrow();
             Usuario tecnico = usuarioRepository.findById(detalleReq.getTecnicoId()).orElseThrow();
+            boolean esReentrega = "DEVUELTO".equals(
+                orden.getEstado() != null ? orden.getEstado().getNombre() : null);
 
             EntregaDetalle detalle = new EntregaDetalle();
             detalle.setEntrega(entrega);
@@ -141,8 +142,8 @@ public class EntregaController {
             historial.setUsuario(usuario);
             historial.setEstadoNuevo(estadoEntregado);
             historial.setEntregaDetalle(detalle);
-            historial.setAccion(reentrega ? "REENTREGA" : "ENTREGA");
-            historial.setObservacion((reentrega ? "OT reentregada a " : "OT entregada a ")
+            historial.setAccion(esReentrega ? "REENTREGA" : "ENTREGA");
+            historial.setObservacion((esReentrega ? "OT reentregada a " : "OT entregada a ")
                 + tecnico.getNombres() + " " + tecnico.getApellidos());
             historialRepository.save(historial);
         }
@@ -393,15 +394,12 @@ public class EntregaController {
     public static class EntregaRequest {
         private String observacion;
         private LocalDateTime fecha;
-        private Boolean reentrega;
         private List<EntregaDetalleRequest> detalles;
 
         public String getObservacion() { return observacion; }
         public void setObservacion(String observacion) { this.observacion = observacion; }
         public LocalDateTime getFecha() { return fecha; }
         public void setFecha(LocalDateTime fecha) { this.fecha = fecha; }
-        public Boolean getReentrega() { return reentrega; }
-        public void setReentrega(Boolean reentrega) { this.reentrega = reentrega; }
         public List<EntregaDetalleRequest> getDetalles() { return detalles; }
         public void setDetalles(List<EntregaDetalleRequest> detalles) { this.detalles = detalles; }
     }

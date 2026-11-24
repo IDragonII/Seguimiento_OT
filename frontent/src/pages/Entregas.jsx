@@ -71,7 +71,6 @@ export default function Entregas({ modo = 'entregas' }) {
   function cambiarModoReentrega() {
     const nuevo = !modoReentrega
     setModoReentrega(nuevo)
-    setForm((prev) => ({ ...prev, filas: [] }))
     setBusqueda('')
     setError('')
     if (nuevo && ordenesDevueltas === null) {
@@ -130,7 +129,6 @@ export default function Entregas({ modo = 'entregas' }) {
       await api.post('/entregas', {
         observacion: form.observacion,
         fecha: form.fecha,
-        reentrega: modoReentrega,
         detalles: form.filas.map((f) => ({
           ordenId: f.ordenId,
           tecnicoId: Number(f.tecnicoId || form.tecnicoId),
@@ -226,6 +224,9 @@ export default function Entregas({ modo = 'entregas' }) {
   }
 
   const catalogoOTs = modoReentrega ? (ordenesDevueltas ?? []) : órdenesDisponibles
+  // La selección es única para ambos catálogos: se pueden entregar juntas OTs
+  // programadas y devueltas, así que al cambiar de modo no se pierde lo elegido.
+  const catalogoSeleccion = [...órdenesDisponibles, ...(ordenesDevueltas ?? [])]
 
   const OTsFiltradas = catalogoOTs.filter((o) => {
     if (!busqueda) return true
@@ -482,7 +483,7 @@ export default function Entregas({ modo = 'entregas' }) {
                       </div>
                     )}
                     {form.filas.map((f) => {
-                      const o = catalogoOTs.find((x) => x.id === f.ordenId)
+                      const o = catalogoSeleccion.find((x) => x.id === f.ordenId)
                       const general = tecnicosForm.find((t) => String(t.id) === String(form.tecnicoId))
                       return (
                         <div
@@ -552,7 +553,7 @@ export default function Entregas({ modo = 'entregas' }) {
                   filasResueltas.length !== form.filas.length
                 }
               >
-                {modoReentrega ? 'Registrar reentrega' : 'Registrar entrega'}
+                Registrar entrega
               </button>
               <button className="btn btn-secundario" type="button" onClick={() => cerrar()}>
                 Cancelar
