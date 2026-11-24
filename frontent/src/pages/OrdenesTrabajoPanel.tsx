@@ -146,16 +146,19 @@ function Indicador({
   color: string
 }) {
   return (
-    <div data-indicador={id} className="flex items-center gap-2.5 px-4 first:pl-0 last:pr-0">
+    <div
+      data-indicador={id}
+      className="flex min-w-0 items-center gap-2 px-2.5 first:pl-0 last:pr-0 sm:gap-2.5 sm:px-4"
+    >
       <span
-        className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full"
+        className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full sm:h-9 sm:w-9"
         style={{ backgroundColor: `${color}1A` }}
       >
         <Icono size={17} color={color} aria-hidden="true" />
       </span>
-      <div>
-        <div className="text-lg font-bold leading-none text-[#18283E]">{valor}</div>
-        <div className="mt-1 text-[10.5px] font-semibold uppercase tracking-wide text-[#718096]">
+      <div className="min-w-0">
+        <div className="text-base font-bold leading-none text-[#18283E] sm:text-lg">{valor}</div>
+        <div className="mt-1 text-[9.5px] font-semibold uppercase leading-tight tracking-wide text-[#718096] sm:text-[10.5px]">
           {etiqueta}
         </div>
       </div>
@@ -942,12 +945,15 @@ export default function OrdenesTrabajoPanel() {
   return (
     <main className="flex-1 px-4 py-5 sm:px-6 lg:px-8 xl:px-10">
       <div className="w-full space-y-4">
-        <div className="flex flex-wrap items-center justify-between gap-4 rounded-xl border border-[#E4E8EE] bg-white px-5 py-4 shadow-[0_4px_18px_rgba(24,40,62,0.07)]">
-          <div className="min-w-[240px]">
-            <h1 className="text-2xl font-bold text-[#18283E]">Órdenes de trabajo</h1>
+        <div className="flex flex-wrap items-center justify-between gap-4 rounded-xl border border-[#E4E8EE] bg-white px-4 py-4 shadow-[0_4px_18px_rgba(24,40,62,0.07)] sm:px-5">
+          <div className="min-w-0">
+            <h1 className="text-xl font-bold text-[#18283E] sm:text-2xl">Órdenes de trabajo</h1>
             <p className="mt-0.5 text-sm text-[#718096]">Consulta y seguimiento de OT</p>
           </div>
-          <div data-indicadores className="flex flex-wrap items-center gap-y-3 divide-x divide-[#E4E8EE]">
+          <div
+            data-indicadores
+            className="grid w-full grid-cols-3 items-center divide-x divide-[#E4E8EE] sm:flex sm:w-auto sm:flex-wrap sm:gap-y-3"
+          >
             <Indicador
               id="TOTAL"
               icono={Files}
@@ -986,7 +992,7 @@ export default function OrdenesTrabajoPanel() {
 
         {ots !== null && (
           <div className="flex flex-wrap items-center gap-2.5 rounded-xl border border-[#E4E8EE] bg-white px-4 py-3">
-            <div className="flex overflow-hidden rounded-lg border border-[#E4E8EE]">
+            <div className="flex shrink-0 overflow-hidden rounded-lg border border-[#E4E8EE]">
               <button
                 type="button"
                 data-vista="lista"
@@ -1017,7 +1023,7 @@ export default function OrdenesTrabajoPanel() {
               </button>
             </div>
 
-            <div className="relative min-w-[190px] flex-1">
+            <div className="relative min-w-0 flex-1 sm:min-w-[190px]">
               <Search
                 size={15}
                 className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[#A0AEC0]"
@@ -1036,88 +1042,92 @@ export default function OrdenesTrabajoPanel() {
               />
             </div>
 
-            <select
-              data-filtro-tipo
-              value={filtroTipo}
-              onChange={(e) => {
-                setFiltroTipo(e.target.value)
-                setPage(0)
-              }}
-              className="rounded-lg border border-[#E4E8EE] bg-white px-2.5 py-2 text-sm text-[#18283E] outline-none focus:border-[#3478C7]"
-            >
-              <option value="">Todos los tipos</option>
-              {tipos.map((t) => (
-                <option key={t.id} value={String(t.id)}>
-                  {t.nombre}
-                </option>
-              ))}
-            </select>
+            <div className="grid w-full grid-cols-2 gap-2.5 sm:flex sm:w-auto sm:flex-wrap sm:items-center">
+              <select
+                data-filtro-tipo
+                value={filtroTipo}
+                onChange={(e) => {
+                  setFiltroTipo(e.target.value)
+                  setPage(0)
+                }}
+                className="w-full rounded-lg border border-[#E4E8EE] bg-white px-2.5 py-2 text-sm text-[#18283E] outline-none focus:border-[#3478C7] sm:w-auto"
+              >
+                <option value="">Todos los tipos</option>
+                {tipos.map((t) => (
+                  <option key={t.id} value={String(t.id)}>
+                    {t.nombre}
+                  </option>
+                ))}
+              </select>
 
-            <select
-              data-filtro-categoria
-              value={filtroCategoria}
-              onChange={(e) => {
-                setFiltroCategoria(e.target.value)
-                setPage(0)
-              }}
-              className="rounded-lg border border-[#E4E8EE] bg-white px-2.5 py-2 text-sm text-[#18283E] outline-none focus:border-[#3478C7]"
-            >
-              <option value="">Todas las categorías</option>
-              {categorias.map((c) => (
-                <option key={c.id} value={String(c.id)}>
-                  {c.nombre}
-                </option>
-              ))}
-            </select>
+              <select
+                data-filtro-categoria
+                value={filtroCategoria}
+                onChange={(e) => {
+                  setFiltroCategoria(e.target.value)
+                  setPage(0)
+                }}
+                className="w-full rounded-lg border border-[#E4E8EE] bg-white px-2.5 py-2 text-sm text-[#18283E] outline-none focus:border-[#3478C7] sm:w-auto"
+              >
+                <option value="">Todas las categorías</option>
+                {categorias.map((c) => (
+                  <option key={c.id} value={String(c.id)}>
+                    {c.nombre}
+                  </option>
+                ))}
+              </select>
 
-            <select
-              data-filtro-estado
-              value={filtroEstado}
-              onChange={(e) => {
-                setFiltroEstado(e.target.value)
-                setPage(0)
-              }}
-              className="rounded-lg border border-[#E4E8EE] bg-white px-2.5 py-2 text-sm text-[#18283E] outline-none focus:border-[#3478C7]"
-            >
-              <option value="">Todos los estados</option>
-              {ESTADOS_OT.map((e) => (
-                <option key={e} value={e}>
-                  {e}
-                </option>
-              ))}
-            </select>
+              <select
+                data-filtro-estado
+                value={filtroEstado}
+                onChange={(e) => {
+                  setFiltroEstado(e.target.value)
+                  setPage(0)
+                }}
+                className="w-full rounded-lg border border-[#E4E8EE] bg-white px-2.5 py-2 text-sm text-[#18283E] outline-none focus:border-[#3478C7] sm:w-auto"
+              >
+                <option value="">Todos los estados</option>
+                {ESTADOS_OT.map((e) => (
+                  <option key={e} value={e}>
+                    {e}
+                  </option>
+                ))}
+              </select>
 
-            <select
-              data-orden
-              value={orden}
-              onChange={(e) => {
-                setOrden(e.target.value)
-                setPage(0)
-              }}
-              className="rounded-lg border border-[#E4E8EE] bg-white px-2.5 py-2 text-sm text-[#18283E] outline-none focus:border-[#3478C7]"
-            >
-              <option value="reciente">Más reciente</option>
-              <option value="antigua">Más antigua</option>
-              <option value="numero">Nº de OT</option>
-            </select>
+              <select
+                data-orden
+                value={orden}
+                onChange={(e) => {
+                  setOrden(e.target.value)
+                  setPage(0)
+                }}
+                className="w-full rounded-lg border border-[#E4E8EE] bg-white px-2.5 py-2 text-sm text-[#18283E] outline-none focus:border-[#3478C7] sm:w-auto"
+              >
+                <option value="reciente">Más reciente</option>
+                <option value="antigua">Más antigua</option>
+                <option value="numero">Nº de OT</option>
+              </select>
+            </div>
 
-            <span data-resultados className="text-xs font-medium text-[#718096]">
-              {visibles.length} resultado{visibles.length === 1 ? '' : 's'}
-            </span>
+            <div className="flex w-full items-center justify-between gap-2 sm:w-auto">
+              <span data-resultados className="text-xs font-medium text-[#718096]">
+                {visibles.length} resultado{visibles.length === 1 ? '' : 's'}
+              </span>
 
-            <PaginacionPanel
-              page={paginaActual}
-              size={POR_PAGINA}
-              total={visibles.length}
-              setPage={setPage}
-            />
+              <PaginacionPanel
+                page={paginaActual}
+                size={POR_PAGINA}
+                total={visibles.length}
+                setPage={setPage}
+              />
+            </div>
 
             {puedeCrear && (
-              <>
+              <div className="grid w-full grid-cols-2 gap-2.5 sm:ml-auto sm:flex sm:w-auto sm:items-center">
                 <button
                   type="button"
                   data-nueva-ot
-                  className="btn ml-auto"
+                  className="btn w-full justify-center sm:w-auto"
                   onClick={() => setModal({ tipo: 'nueva' })}
                 >
                   <Plus size={15} aria-hidden="true" />
@@ -1125,12 +1135,12 @@ export default function OrdenesTrabajoPanel() {
                 </button>
                 <button
                   type="button"
-                  className="btn ml-auto"
+                  className="btn w-full justify-center sm:w-auto"
                   onClick={() => setModal({ tipo: 'importar' })}
                 >
                   Importar Excel
                 </button>
-              </>
+              </div>
             )}
           </div>
         )}
