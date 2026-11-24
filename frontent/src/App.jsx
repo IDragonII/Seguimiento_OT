@@ -18,6 +18,7 @@ import MiHistorial from './pages/MiHistorial'
 import OrdenesTrabajoPanel from './pages/OrdenesTrabajoPanel'
 import EntregasPanel from './pages/EntregasPanel'
 import ProgramacionEjecucionPanel from './pages/ProgramacionEjecucionPanel'
+import SeguimientoPanel from './pages/SeguimientoPanel'
 import ModuloProximamente from './components/panel/ModuloProximamente'
 
 const ROLES_POR_RUTA = {
@@ -54,6 +55,7 @@ const VISTAS_MODULO = {
   'ordenes-trabajo': OrdenesTrabajoPanel,
   entregas: EntregasPanel,
   ejecucion: ProgramacionEjecucionPanel,
+  seguimiento: SeguimientoPanel,
 }
 
 function RequireAuth({ roles, children }) {

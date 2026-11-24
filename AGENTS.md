@@ -185,6 +185,30 @@
   `["ejecucion", "ordenes-trabajo"]` (el segundo es solo lectura). El rol se
   crea de forma idempotente en `DataSeeder.crearRolSiFalta`. **No cambia
   estados desde la app admin**: el permiso excluye a FACTIBILIZADOR.
+- **Módulo `seguimiento` construido** (CONSULTOR + FACTIBILIZADOR, solo
+  lectura): `frontent/src/pages/SeguimientoPanel.tsx` (TSX + Tailwind, en
+  `VISTAS_MODULO`). **Pantalla de consulta minimalista** (no es listado): al
+  entrar solo carga los tipos (`GET /api/tipos-ot`); formulario mobile-first
+  con encabezado SIGOT (banda `#18283E`), select **Tipo de OT** + input
+  **Número de OT** + botón **Buscar** (vertical en móvil, fila en desktop).
+  El resultado va **siempre en `Modal`** (nunca lista/tarjeta debajo): si
+  existe → `ModalResultado` (banda nº+tipo+área+cliente+badge, **3 figuras
+  del ciclo de vida** en línea conectada — Inicio/creación, Entrega,
+  Devolución, con fecha corta o "Pendiente" y nodo coloreado al
+  completarse —, bloque **Ubicación** con chip `Con técnico: X`
+  (`tecnicoActual`) o `En oficina`, pie **Imprimir** (`window.print()` con
+  CSS `@media print` dentro del modal) + **Cerrar**); si no →
+  `ModalNoEncontrado`; spinner en
+  el botón mientras consulta; error en banner `role="alert"`. **Backend**:
+  `GET /api/ordenes-trabajo/buscar?tipoId=&numero=` (404 si no existe la
+  pareja) en `OrdenTrabajoController`: inicializa materiales en
+  transacción y resuelve en una pasada por los detalles (ordenados por
+  `fechaCreacion` DESC vía `findByOrdenTrabajoIdOrderByFechaCreacionDesc`,
+  método nuevo en `EntregaDetalleRepository`): **`tecnicoActual`** (detalle
+  sin `fechaDevolucion`), **`fechaEntrega`** (de la entrega del detalle más
+  reciente) y **`fechaDevolucion`** (la más reciente con fecha).
+  **No carga el listado de OT al entrar**.
+  `modulosPorRol` ya asignaba `seguimiento` a CONSULTOR y FACTIBILIZADOR.
 - **No son módulos**: notificaciones y perfil. La **campanita** del header
   abre un dropdown con las alertas (detalle en `Modal`); el **avatar** abre
   un menú con "Mi perfil" (Modal con tarjeta de datos) y "Cerrar sesión"

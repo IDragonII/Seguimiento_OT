@@ -27,11 +27,13 @@ public class OrdenTrabajoController {
     private final CategoriaOTRepository categoriaRepository;
     private final MaterialRepository materialRepository;
     private final OrdenMaterialRepository ordenMaterialRepository;
+    private final EntregaDetalleRepository entregaDetalleRepository;
 
     public OrdenTrabajoController(OrdenTrabajoRepository ordenRepository, TipoOTRepository tipoRepository,
                                   EstadoOTRepository estadoRepository, UsuarioRepository usuarioRepository,
                                   HistorialOTRepository historialRepository, CategoriaOTRepository categoriaRepository,
-                                  MaterialRepository materialRepository, OrdenMaterialRepository ordenMaterialRepository) {
+                                  MaterialRepository materialRepository, OrdenMaterialRepository ordenMaterialRepository,
+                                  EntregaDetalleRepository entregaDetalleRepository) {
         this.ordenRepository = ordenRepository;
         this.tipoRepository = tipoRepository;
         this.estadoRepository = estadoRepository;
@@ -40,6 +42,7 @@ public class OrdenTrabajoController {
         this.categoriaRepository = categoriaRepository;
         this.materialRepository = materialRepository;
         this.ordenMaterialRepository = ordenMaterialRepository;
+        this.entregaDetalleRepository = entregaDetalleRepository;
     }
 
     @GetMapping
@@ -72,6 +75,51 @@ public class OrdenTrabajoController {
         return ordenRepository.findById(id)
             .map(ResponseEntity::ok)
             .orElse(ResponseEntity.notFound().build());
+    }
+
+    /**
+     * Consulta puntual del módulo Seguimiento: busca una OT por tipo + número
+     * sin cargar el listado completo. Devuelve la OT (con materiales), el
+     * técnico que la tiene en poder (si la tiene), la fecha de su última
+     * entrega y la de su última devolución. 404 si no existe la pareja.
+     */
+    @GetMapping("/buscar")
+    @Transactional(readOnly = true)
+    public ResponseEntity<?> buscar(@RequestParam("tipoId") Long tipoId,
+                                    @RequestParam("numero") Integer numero) {
+        OrdenTrabajo orden = ordenRepository.findByTipoOT_IdAndNumeroOT(tipoId, numero)
+            .orElse(null);
+        if (orden == null) {
+            return ResponseEntity.notFound().build();
+        }
+        // Materiales dentro de la transacción (evita N+1 / OSIV al serializar).
+        orden.getMateriales().size();
+
+        // Detalles de la OT del más reciente al más antiguo: con la primera
+        // pasada se resuelve entrega actual, última devolución y técnico en poder.
+        Usuario tecnicoActual = null;
+        LocalDateTime fechaEntrega = null;
+        LocalDateTime fechaDevolucion = null;
+        for (EntregaDetalle d : entregaDetalleRepository
+                .findByOrdenTrabajoIdOrderByFechaCreacionDesc(orden.getId())) {
+            if (fechaEntrega == null && d.getEntrega() != null) {
+                fechaEntrega = d.getEntrega().getFechaEntrega();
+            }
+            if (fechaDevolucion == null && d.getFechaDevolucion() != null) {
+                fechaDevolucion = d.getFechaDevolucion();
+            }
+            if (tecnicoActual == null && d.getFechaDevolucion() == null
+                    && d.getTecnico() != null) {
+                tecnicoActual = d.getTecnico();
+            }
+        }
+
+        Map<String, Object> respuesta = new HashMap<>();
+        respuesta.put("orden", orden);
+        respuesta.put("tecnicoActual", tecnicoActual);
+        respuesta.put("fechaEntrega", fechaEntrega);
+        respuesta.put("fechaDevolucion", fechaDevolucion);
+        return ResponseEntity.ok(respuesta);
     }
 
     @PostMapping

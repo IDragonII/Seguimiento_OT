@@ -32,4 +32,7 @@ public interface EntregaDetalleRepository extends JpaRepository<EntregaDetalle, 
 
     // Bandeja del técnico ordenada por fecha de entrega (más reciente primero).
     List<EntregaDetalle> findByTecnicoIdOrderByFechaCreacionDesc(Long tecnicoId);
+
+    // Último técnico que tuvo una OT (fallback de "responsable" en /buscar).
+    List<EntregaDetalle> findByOrdenTrabajoIdOrderByFechaCreacionDesc(Long ordenTrabajoId);
 }
